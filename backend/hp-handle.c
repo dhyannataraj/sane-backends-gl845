@@ -169,7 +169,7 @@ hp_handle_stopScan (HpHandle this)
 
 static SANE_Status
 hp_handle_uploadParameters (HpHandle this, HpScsi scsi, int *scan_depth,
-                            hp_bool_t *soft_invert)
+                            hp_bool_t *soft_invert, hp_bool_t *out8)
 {
   SANE_Parameters * p	 = &this->scan_params;
   int data_width;
@@ -178,6 +178,7 @@ hp_handle_uploadParameters (HpHandle this, HpScsi scsi, int *scan_depth,
   assert(scsi);
 
   *soft_invert = 0;
+  *out8 = 0;
 
   p->last_frame = SANE_TRUE;
   /* inquire resulting size of image after setting it up */
@@ -199,14 +200,37 @@ hp_handle_uploadParameters (HpHandle this, HpScsi scsi, int *scan_depth,
       break;
   case HP_SCANMODE_GRAYSCALE: /* Grayscale */
       p->format = SANE_FRAME_GRAY;
-      p->depth  = 8;
-      *scan_depth = 8;
+      p->depth  = (data_width > 8) ? 16 : 8;
+      *scan_depth = data_width;
+
+      /* 8 bit output forced ? */
+      if ( *scan_depth > 8 )
+      {
+        *out8 = sanei_hp_optset_output_8bit (this->dev->options, this->data);
+        DBG(1,"hp_handle_uploadParameters: out8=%d\n", (int)*out8);
+        if (*out8)
+        {
+          p->depth = 8;
+          p->bytes_per_line /= 2;
+        }
+      }
       break;
   case HP_SCANMODE_COLOR: /* RGB */
       p->format = SANE_FRAME_RGB;
       p->depth  = (data_width > 24) ? 16 : 8;
       *scan_depth = data_width / 3;
 
+      /* 8 bit output forced ? */
+      if ( *scan_depth > 8 )
+      {
+        *out8 = sanei_hp_optset_output_8bit (this->dev->options, this->data);
+        DBG(1,"hp_handle_uploadParameters: out8=%d\n", (int)*out8);
+        if (*out8)
+        {
+          p->depth = 8;
+          p->bytes_per_line /= 2;
+        }
+      }
       /* HP PhotoSmart does not invert when depth > 8. Lets do it by software */
       if (   (*scan_depth > 8)
           && (sanei_hp_device_probe (&compat, scsi) == SANE_STATUS_GOOD)
@@ -339,7 +363,8 @@ sanei_hp_handle_startScan (HpHandle this)
   if (!FAILED(status))
      status = hp_handle_uploadParameters(this, scsi,
                                          &(procdata.bits_per_channel),
-                                         &(procdata.invert));
+                                         &(procdata.invert),
+                                         &(procdata.out8));
 
   if (FAILED(status))
     {
@@ -394,10 +419,16 @@ sanei_hp_handle_startScan (HpHandle this)
   this->bytes_left = ( this->scan_params.bytes_per_line
   		       * this->scan_params.lines );
 
-  DBG(1, "start: %d pixels per line, %d bytes, %d lines high\n",
+  DBG(1, "start: %d pixels per line, %d bytes per line, %d lines high\n",
       this->scan_params.pixels_per_line, this->scan_params.bytes_per_line,
       this->scan_params.lines);
   procdata.bytes_per_line = (int)this->scan_params.bytes_per_line;
+  if (procdata.out8)
+  {
+    procdata.bytes_per_line *= 2;
+    DBG(1,"(scanner will send %d bytes per line, 8 bit output forced)\n",
+        procdata.bytes_per_line);
+  }
   procdata.lines = this->scan_params.lines;
 
   /* Wait for front-panel button push ? */

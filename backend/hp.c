@@ -43,9 +43,22 @@
    HP Scanner Control Language (SCL).
 */
 
-static char *hp_backend_version = "0.88";
+static char *hp_backend_version = "0.90";
 /* Changes:
 
+   V 0.90, 02-Sep-2000, PK:
+      - fix timing problem between killing child and writing to pipe
+      - change fprintf(stderr,...) to DBG
+      - change include <sane..> to "sane.." in hp.h
+      - change handling of options that have global effects.
+        i.e. if option scanmode is received (has global effect),
+        all options that "may change" are send to the scanner again.
+        This fixes a problem that --resolution specified infront of
+        --mode on command line of scanimage was ignored.
+        NOTE: This change does not allow to specify --depth 12 infront of
+        --mode color, because --depth is only enabled with --mode color.
+      - add depth greater 8 bits for mode grayscale
+      - add option for 8 bit output but 10/12 bit scanning
    V 0.88, 25-Jul-2000, PK:
       - remove inlines
    V 0.88, 20-Jul-2000, PK:
@@ -174,19 +187,25 @@ sanei_hp_dbgdump (const void * bufp, size_t len)
   const hp_byte_t *buf	= bufp;
   int		offset	= 0;
   int		i;
-  FILE *	fp	= stderr;
+  char line[128], pt[32];
 
   for (offset = 0; offset < (int)len; offset += 16)
     {
-      fprintf(fp, " 0x%04X ", offset);
+      sprintf (line," 0x%04X ", offset);
       for (i = offset; i < offset + 16 && i < (int)len; i++)
-	  fprintf(fp, " %02X", buf[i]);
+      {
+	  sprintf (pt," %02X", buf[i]);
+          strcat (line, pt);
+      }
       while (i++ < offset + 16)
-	  fputs("   ", fp);
-      fputs("  ", fp);
+	  strcat (line, "   ");
+      strcat (line, "  ");
       for (i = offset; i < offset + 16 && i < (int)len; i++)
-	  fprintf(fp, "%c", isprint(buf[i]) ? buf[i] : '.');
-      fputs("\n", fp);
+      {
+	  sprintf (pt, "%c", isprint(buf[i]) ? buf[i] : '.');
+          strcat (line, pt);
+      }
+      DBG(16,"%s\n",line);
     }
 }
 

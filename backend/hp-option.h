@@ -140,6 +140,13 @@
 # define SANE_DESC_UPDATE "Update options."
 #endif
 
+#ifndef SANE_NAME_OUTPUT_8BIT
+# define SANE_NAME_OUTPUT_8BIT   "output-8bit"
+# define SANE_TITLE_OUTPUT_8BIT  "8 bit output"
+# define SANE_DESC_OUTPUT_8BIT   "Use bit depth greater eight internally,\
+ but output only eight bits"
+#endif
+
 #ifndef SANE_NAME_BUTTON_WAIT
 # define SANE_NAME_BUTTON_WAIT   "button-wait"
 # define SANE_TITLE_BUTTON_WAIT  "Front button wait"
@@ -248,6 +255,7 @@ SANE_Status sanei_hp_optset_control (HpOptSet this, HpData data,
 SANE_Status sanei_hp_optset_guessParameters (HpOptSet this, HpData data,
                                SANE_Parameters * p);
 enum hp_scanmode_e sanei_hp_optset_scanmode (HpOptSet this, HpData data);
+hp_bool_t sanei_hp_optset_output_8bit (HpOptSet this, HpData data);
 int sanei_hp_optset_data_width (HpOptSet this, HpData data);
 hp_bool_t sanei_hp_optset_isImmediate (HpOptSet this, int optnum);
 hp_bool_t sanei_hp_optset_mirror_vert (HpOptSet this, HpData data, HpScsi scsi);

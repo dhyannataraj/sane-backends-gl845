@@ -688,6 +688,44 @@ hp_scale_to_16bit(int count, register unsigned char *data, int depth,
     }
 }
 
+
+static void
+hp_scale_to_8bit(int count, register unsigned char *data, int depth,
+                 hp_bool_t invert)
+{
+    register unsigned int tmp, mask;
+    register hp_bool_t lowbyte_first = is_lowbyte_first_byteorder ();
+    unsigned int shift1 = depth-8;
+    int k;
+    unsigned char *dataout = data;
+
+    if ((count <= 0) || (shift1 <= 0)) return;
+
+    mask = 1;
+    for (k = 1; k < depth; k++) mask |= (1 << k);
+
+    if (lowbyte_first)
+    {
+      while (count--) {
+         tmp = ((((unsigned int)data[0])<<8) | ((unsigned int)data[1])) & mask;
+         tmp >>= shift1;
+         if (invert) tmp = ~tmp;
+         *(dataout++) = tmp & 255U;
+         data += 2;
+      }
+    }
+    else  /* Highbyte first */
+    {
+      while (count--) {
+         tmp = ((((unsigned int)data[0])<<8) | ((unsigned int)data[1])) & mask;
+         tmp >>= shift1;
+         if (invert) tmp = ~tmp;
+         *(dataout++) = tmp & 255U;
+         data += 2;
+      }
+    }
+}
+
 static PROCDATA_HANDLE *
 process_data_init (HpProcessData *procdata, const unsigned char *map,
                    int outfd, hp_bool_t use_imgbuf)
@@ -717,6 +755,7 @@ process_data_init (HpProcessData *procdata, const unsigned char *map,
  if ( procdata->mirror_vertical || use_imgbuf)
  {
    tsz = procdata->lines*procdata->bytes_per_line;
+   if (procdata->out8) tsz /= 2;
    ph->image_ptr = ph->image_buf = sanei_hp_alloc (tsz);
    if ( !ph->image_buf )
    {
@@ -756,7 +795,9 @@ process_data_write (PROCDATA_HANDLE *ph, unsigned char *data, int nbytes)
    return SANE_STATUS_GOOD;
 
  DBG(12, "process_data_write: write %d bytes\n", ph->wr_buf_size);
- if ( write (ph->outfd, ph->wr_buf, ph->wr_buf_size) != ph->wr_buf_size)
+ /* Dont write data if we got a signal in the meantime */
+ if (   signal_caught
+     || write (ph->outfd, ph->wr_buf, ph->wr_buf_size) != ph->wr_buf_size)
  {
    DBG(1, "process_data_write: write failed: %s\n",
        signal_caught ? "signal caught" : strerror(errno));
@@ -768,7 +809,8 @@ process_data_write (PROCDATA_HANDLE *ph, unsigned char *data, int nbytes)
  /* For large amount of data write it from data-buffer */
  while ( nbytes > ph->wr_buf_size )
  {
-   if ( write (ph->outfd, data, ph->wr_buf_size) != ph->wr_buf_size)
+   if (   signal_caught
+       || write (ph->outfd, data, ph->wr_buf_size) != ph->wr_buf_size)
    {
      DBG(1, "process_data_write: write failed: %s\n",
          signal_caught ? "signal caught" : strerror(errno));
@@ -792,7 +834,7 @@ static SANE_Status
 process_scanline (PROCDATA_HANDLE *ph, unsigned char *linebuf,
                   int bytes_per_line)
 
-{
+{int out_bytes_per_line = bytes_per_line;
  HpProcessData *procdata;
 
  if (ph == NULL) return SANE_STATUS_INVAL;
@@ -802,18 +844,31 @@ process_scanline (PROCDATA_HANDLE *ph, unsigned char *linebuf,
    hp_data_map (ph->map, bytes_per_line, linebuf);
 
  if (procdata->bits_per_channel > 8)
-   hp_scale_to_16bit( bytes_per_line/2, linebuf,
-                      procdata->bits_per_channel,
-                      procdata->invert);
+ {
+   if (procdata->out8)
+   {
+     hp_scale_to_8bit( bytes_per_line/2, linebuf,
+                       procdata->bits_per_channel,
+                       procdata->invert);
+     out_bytes_per_line /= 2;
+   }
+   else
+   {
+     hp_scale_to_16bit( bytes_per_line/2, linebuf,
+                        procdata->bits_per_channel,
+                        procdata->invert);
+   }
+ }
 
  if ( ph->image_buf )
  {
    DBG(5, "process_scanline: save in memory\n");
 
-   if ( ph->image_ptr+bytes_per_line-1 <= ph->image_buf+ph->image_buf_size-1 )
+   if (    ph->image_ptr+out_bytes_per_line-1
+        <= ph->image_buf+ph->image_buf_size-1 )
    {
-     memcpy(ph->image_ptr, linebuf, bytes_per_line);
-     ph->image_ptr += bytes_per_line;
+     memcpy(ph->image_ptr, linebuf, out_bytes_per_line);
+     ph->image_ptr += out_bytes_per_line;
    }
    else
    {
@@ -823,7 +878,7 @@ process_scanline (PROCDATA_HANDLE *ph, unsigned char *linebuf,
  else /* Save scanlines in a bigger buffer. */
  {    /* Otherwise we will get performance problems */
 
-   RETURN_IF_FAIL ( process_data_write (ph, linebuf, bytes_per_line) );
+   RETURN_IF_FAIL ( process_data_write (ph, linebuf, out_bytes_per_line) );
  }
  return SANE_STATUS_GOOD;
 }
@@ -892,7 +947,7 @@ process_data_flush (PROCDATA_HANDLE *ph)
  if ( ph->wr_left != ph->wr_buf_size ) /* Something in write buffer ? */
  {
    nbytes = ph->wr_buf_size - ph->wr_left;
-   if ( write (ph->outfd, ph->wr_buf, nbytes) != nbytes)
+   if ( signal_caught || write (ph->outfd, ph->wr_buf, nbytes) != nbytes)
    {
      DBG(1, "process_data_flush: write failed: %s\n",
          signal_caught ? "signal caught" : strerror(errno));
@@ -906,6 +961,7 @@ process_data_flush (PROCDATA_HANDLE *ph)
  if ( ph->image_buf )
  {
    bytes_per_line = procdata->bytes_per_line;
+   if (procdata->out8) bytes_per_line /= 2;
    image_len = (size_t) (ph->image_ptr - ph->image_buf);
    num_lines = ((int)(image_len + bytes_per_line-1)) / bytes_per_line;
 
@@ -917,7 +973,8 @@ process_data_flush (PROCDATA_HANDLE *ph)
      image_data = ph->image_buf + (num_lines-1) * bytes_per_line;
      while (num_lines > 0 )
      {
-       if (write(ph->outfd, image_data, bytes_per_line) != bytes_per_line)
+       if (   signal_caught
+           || write(ph->outfd, image_data, bytes_per_line) != bytes_per_line)
        {
          DBG(1,"process_data_finish: write from memory failed: %s\n",
              signal_caught ? "signal caught" : strerror(errno));
@@ -933,7 +990,8 @@ process_data_flush (PROCDATA_HANDLE *ph)
      image_data = ph->image_buf;
      while (num_lines > 0 )
      {
-       if (write(ph->outfd, image_data, bytes_per_line) != bytes_per_line)
+       if (   signal_caught
+           || write(ph->outfd, image_data, bytes_per_line) != bytes_per_line)
        {
          DBG(1,"process_data_finish: write from memory failed: %s\n",
              signal_caught ? "signal caught" : strerror(errno));
