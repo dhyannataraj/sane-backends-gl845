@@ -1,3 +1,20 @@
+2000-09-04  Peter Kirchgessner <peter@kirchgessner.net>
+
+        * backend/hp-scl.c hp-option.h hp.h hp-handle.c hp-option.c hp.c
+          hp-backend V 0.90, 02-Sep-2000, PK:
+          - fix timing problem between killing child and writing to pipe
+          - change fprintf(stderr,...) to DBG
+          - change include <sane..> to "sane.." in hp.h
+          - change handling of options that have global effects.
+            i.e. if option scanmode is received (has global effect),
+            all options that "may change" are send to the scanner again.
+            This fixes a problem that --resolution specified infront of
+            --mode on command line of scanimage was ignored.
+            NOTE: This change does not allow to specify --depth 12 infront of
+            --mode color, because --depth is only enabled with --mode color.
+          - add depth greater 8 bits for mode grayscale
+          - add option for 8 bit output but 10/12 bit scanning
+
 2000-08-12  Petter Reinholdtsen <pere@td.org.uit.no>
 
 	* configure.in aclocal.m4 configure NEWS: New version 1.0.3.
