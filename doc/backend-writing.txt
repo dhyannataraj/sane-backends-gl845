@@ -159,6 +159,16 @@ PROGRAMMING
   be possible to temporary set TL_X > BR_X or TL_ > BR, otherwise it is hard
   for a frontend to set the correct values.
 
+* SANE_Parameters::proposed_filename:
+  If the frontend makes use of this field, the frontend must mangle this
+  proposal or the final filename it produces with its help to suit local
+  filesystem restrictions. Special care should be taken not to cause security
+  flaws this way. For Unix, that means killing out all path separators (/)
+  [to avoid to save away stuff in obscure places or create critical files like 
+  /etc/hosts.allow] and avoiding to overwrite existing files. 
+  (Creating of leading dot files - like .rhosts - is not an issue here, 
+  because that's only a proposed filename extension as mentioned above.
+
 
 TESTING
 -------
