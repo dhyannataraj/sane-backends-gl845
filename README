@@ -1,9 +1,16 @@
-This branch is for developing the SANE2 standard. Don't touch the code
-for now. Fixing bugs in the standard or adding documentation relevant
-for SANE2 is ok, however. If you want to change the contents of the
-standard, discuss on sane-devel first.
+This branch is for developing the SANE2 standard. Don't touch the source 
+code for now. Fixing spelling/grammar bugs in the standard or adding
+documentation relevant for SANE2 is ok, however. If you want to change
+the contents of the standard, discuss on sane-devel first.
 
 ./configure
 cd doc
 make sane.ps
 (make sane-html)
+
+For the HTML version, you need dlh (http://panda.mostang.com/~davidm/dlh.html)
+From time to time "releases" of the standard draft will be made at
+http://www.xsane.org/sane2/index.html. The HTML version of such releases
+can be found at http://www.meier-geinitz.de/sane/sane2/.
+
+The file sane-api-todo provides suggestions for SANE2 features.
