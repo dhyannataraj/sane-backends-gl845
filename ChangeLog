@@ -1,3 +1,22 @@
+2002-12-09  Henning Meier-Geinitz <henning@meier-geinitz.de>
+
+	* doc/sane.tex: Updated section about sane_get_parameters.
+	  Updated subsection "Option Descriptor Type": Clarified
+	  SANE_CAP_ADVANCED, added SANE_CAP_HIDDEN and SANE_CAP_ALWWAY_SETTABLE.
+	  Updated section "sane_control_option": Options can also change their
+	  constraint. Added SANE_INFO_INVALIDATE_PREVIEW.
+	  Removed comment about multiple images from SANE_PFLAG_LAST_FRAME.
+	  1 bit mode only allowed for single channel image data. Moved
+	  proposed_filename implementation note to backend-writing.txt.
+	  Rephrased SANE_FRAME_MIME description.
+	  Updated section "Code Flow": Options can also change their
+	  constraint. Unified coding-style.
+	  Rephrased scan mode option example.
+	  Added batch-scan options.
+	  Used `` and '' as quotation marks. Spelling fixes. Overfull hbox
+	  fixes.
+	  New version: 0.08.
+
 2002-12-08  Henning Meier-Geinitz <henning@meier-geinitz.de>
 
 	* Changelog-*: Removed.
