@@ -12,9 +12,9 @@
 \setlength{\marginparsep}{0pt}
 \addtolength{\topmargin}{-0.75in}
 
-\title{\huge SANE Standard Version 1.03}
+\title{\huge SANE Standard Version 2.0 proposal 0.07 - rauch/beck}
 \author{}
-\date{2002-10-10} 
+\date{Dec 5, 2002} 
 
 \makeindex
 
@@ -74,10 +74,10 @@ to join the SANE development process.
 Changes since the last revision of this document are highlighted
 like this:
 
-% \begin{changebar}
-%   Paragraphs that changed since the last revision of the documention
-%   are marked like this paragraph.
-% \end{changebar}
+\begin{changebar}
+   Paragraphs that changed since the last revision of the documention
+   are marked like this paragraph.
+\end{changebar}
 
 \chapter{Introduction}\label{chap:intro}
 
@@ -223,44 +223,74 @@ frontend.
 
 \section{Image Data Format}\label{sec:imageformat}\index{image data format}
 
-Arguably the most important aspect of an image acquisition system is
-how images are represented.  The SANE approach is to define a simple
-yet powerful representation that is sufficient for vast majority of
-applications and devices.  While the representation is simple, the
-interface has been defined carefully to allow extending it in the
-future without breaking backwards compatibility.  Thus, it will be
-possible to accommodate future applications or devices that were not
-anticipated at the time this standard was created.
+Arguably the most important aspect of an image acquisition system is how
+images are represented. The SANE approach is to define a simple yet powerful
+representation that is sufficient for vast majority of applications and
+devices. While the representation is simple, the interface has been defined
+carefully to allow extending it in the future without breaking backwards
+compatibility. Thus, it will be possible to accommodate future applications or
+devices that were not anticipated at the time this standard was created.
 
-A SANE image is a rectangular area.  The rectangular area is
-subdivided into a number of rows and columns.  At the intersection of
-each row and column is a quadratic pixel.  A pixel consists of one or
-more sample values.  Each sample value represents one channel (e.g.,
-the red channel).  Each sample value has a certain bit depth.  The bit
-depth is fixed for the entire image and can be as small as one bit.
-Valid bit depths are 1, 8, or 16 bits per sample.  If a device's
-natural bit depth is something else, it is up to the driver to scale
-the sample values appropriately (e.g., a 4 bit sample could be scaled
-by a factor of four to represent a sample value of depth 8).
+A SANE image is a rectangular area.  The rectangular area is subdivided into a
+number of rows and columns.  At the intersection of each row and column is a
+(preferable quadratic) pixel. A pixel consists of one or more sample values.
+Each sample value represents one channel (e.g., the red channel).
 
-\subsection{Image Transmission}
+The SANE API transmits an image as a sequence of frames.  Each frame covers
+the same rectangular area as the entire image, but may contain only a subset
+of the channels in the final image.  For example, a red/green/blue image could
+either be transmitted as a single frame that contains the sample values for
+all three channels or it could be transmitted as a sequence of three frames:
+the first frame containing the red channel, the second the green channel, and
+the third the blue channel.
 
-The SANE API transmits an image as a sequence of frames.  Each frame
-covers the same rectangular area as the entire image, but may contain
-only a subset of the channels in the final image.  For example, a
-red/green/blue image could either be transmitted as a single frame
-that contains the sample values for all three channels or it could be
-transmitted as a sequence of three frames: the first frame containing
-the red channel, the second the green channel, and the third the blue
-channel.
+When transmitting an image frame by frame, the frontend needs to know what
+part of the image a frame represents (and how many frames it should expect).
+For that purpose, the SANE API tags every frame with a type and a format
+descriptor.
 
-Conceptually, each frame is transmitted a byte at a time.  Each byte
-may contain 8 sample values (for an image bit depth of 1), one full
-sample value (for an image bit depth of 8), or a partial sample value
-(for an image bit depth of 16 or bigger).  In the latter case, the
-bytes of each sample value are transmitted in the machine's native
-byte order. For depth 1, the leftmost pixel is stored in the most
-significant bit, and the rightmost pixel in the least significant bit.
+\begin{changebar}
+  There are two different types of frames: pixel oriented frames
+  \code{\defn{SANE\_FRAME\_RAW}} and arbitrary data frames
+  \code{\defn{SANE\_FRAME\_MIME}}. These types are discussed in detail in the
+  following sections. The frame types used by version~1 of this standard
+  (\code{\defn{SANE\_FRAME\_GRAY}}, \code{\defn{SANE\_FRAME\_RGB}},
+  \code{\defn{SANE\_FRAME\_RED}}, \code{\defn{SANE\_FRAME\_GREEN}}, and
+  \code{\defn{SANE\_FRAME\_BLUE}}) are obsolete and superseded by
+  \code{\defn{SANE\_FRAME\_RAW}}.
+
+  \subsection{Pixel oriented frames}
+
+  The type of pixel oriented frames is \code{\defn{SANE\_FRAME\_RAW}}. The
+  frame contains one or more channels of data in a channel-interleaved format,
+  that represents sample values from a property of the individual pixels that
+  is subject to further description in the \code{format\_desc} member of the
+  \code{SANE\_Parameters} structured type. See section~\ref{sec:sanegetparameters}
+  on page~\pageref{sec:sanegetparameters} for details about the format
+  descriptions.
+\end{changebar}
+
+  Each sample value has a certain bit depth.  The bit depth is fixed for the
+  entire image and can be as small as one bit. Valid bit depths are 1, 8, or
+  16 bits per sample. If a device's natural bit depth is something else, it is
+  up to the driver to scale the sample values appropriately (e.g., a 4 bit
+  sample could be scaled by a factor of four to represent a sample value of
+  depth 8).
+
+\begin{changebar}
+  The complete image may consist of several different channels. The number of channels
+  is defined by member \code{channels\_per\_image} of \code{SANE\_Parameters}.
+  The image may be transmitted in an arbitary number of frames which can be
+  determined by watching the \code{SANE\_PFLAG\_LAST\_FRAME} flag in said type (or by
+  counting the channels).  Note: This frame type replaces all frame types of
+  the SANE standard version 1.
+\end{changebar}
+
+Conceptually, each pixel oriented frame is transmitted a byte at a time.  Each
+byte may contain 8 sample values (for an image bit depth of 1), one full
+sample value (for an image bit depth of 8), or a partial sample value (for an
+image bit depth of 16 or bigger).  In the latter case, the bytes of each
+sample value are transmitted in the machine's native byte order.
 \begin{quote}
   \begin{center}
     {\bf Backend Implementation Note}
@@ -282,94 +312,67 @@ significant bit, and the rightmost pixel in the least significant bit.
   \end{center}
 \end{figure}
 
-The order in which the sample values in a frame are transmitted is
-illustrated in Figure~\ref{fig:xfer}.  As can be seen, the values are
-transmitted row by row and each row is transmitted from left-most to
-right-most column.  The left-to-right, top-to-bottom transmission
-order applies when the image is viewed in its normal orientation (as
-it would be displayed on a screen, for example).
+The order in which the sample values in a frame are transmitted is illustrated
+in Figure~\ref{fig:xfer}.  As can be seen, the values are transmitted row by
+row and each row is transmitted from left-most to right-most column.  The
+left-to-right, top-to-bottom transmission order applies when the image is
+viewed in its normal orientation (as it would be displayed on a screen, for
+example).
 
-If a frame contains multiple channels, then the channels are
-transmitted in an interleaved fashion.  Figure~\ref{fig:pixels}
-illustrates this for the case where a frame contains a complete
-red/green/blue image with a bit-depth of 8.  For a bit depth of 1,
-each byte contains 8 sample values of a {\em single\/} channel.  In
-other words, a bit depth 1 frame is transmitted in a byte interleaved
-fashion.
+If a frame contains multiple channels, then the channels are transmitted in an
+interleaved fashion.  Figure~\ref{fig:pixels} illustrates this for the case
+where a frame contains a complete red/green/blue image with a bit-depth of 8.
 
 \begin{figure}[htbp]
   \begin{center}
     \leavevmode
     \psfig{file=figs/image-data.eps,width=0.8\textwidth}
-    \caption{Bit and byte order or image data}
+    \caption{Bit and byte order of image data}
     \label{fig:pixels}
   \end{center}
 \end{figure}
 
-When transmitting an image frame by frame, the frontend needs to know
-what part of the image a frame represents (and how many frames it
-should expect).  For that purpose, the SANE API tags every frame with
-a type.  This version of the SANE standard supports the following
-frame types:
-\begin{quote}
-\begin{description}
+For a bit depth of 1, each byte contains 8 sample values of a {\em single\/}
+channel. In other words, a bit depth 1 frame is transmitted in a byte
+interleaved fashion. The first sample of each byte is represented by the most
+significant bit.
 
-\item[\code{\defn{SANE\_FRAME\_GRAY}}:] The frame contains a single
-  channel of data that represents sample values from a spectral band
-  that covers the human visual range.  The image consists of this
-  frame only.
+\begin{changebar}
+For gray channels at a bit depth of 1 only two sample values are possible: 1
+represents minimum intensity (black) and 0 represents maximum intensity
+(white).  For all other channel types and bit depths a sample value of 0
+represents minimum intensity and larger values represent increasing intensity.
 
-\item[\code{\defn{SANE\_FRAME\_RGB}}:] The frame contains three
-  channels of data that represent sample values from the red, green,
-  and blue spectral bands.  The sample values are interleaved in the
-  order red, green, and blue.  The image consists of this frame only.
+\subsection{Arbitrary data frames}
 
-\item[\code{\defn{SANE\_FRAME\_RED}}:] The frame contains one channel
-  of data that represents sample values from the red spectral band.
-  The complete image consists of three frames:
-  \code{SANE\_\-FRA\-ME\_RED}, \code{SANE\_FRAME\_GREEN}, and
-  \code{SANE\_FRAME\_BLUE}.  The order in which the frames are
-  transmitted chosen by the backend.
+It also is possible to transmit arbitrary (not necessaryly pixel oriented)
+data. This allows transmission of compressed images like jpeg, tiff, etc.
 
-\item[\code{\defn{SANE\_FRAME\_GREEN}}:] The frame contains one
-  channel of data that represents sample values from the green
-  spectral band.  The complete image consists of three frames:
-  \code{SANE\_\-FRA\-ME\_RED}, \code{SANE\_FRAME\_GREEN}, and
-  \code{SANE\_FRAME\_BLUE}.  The order in which the frames are
-  transmitted chosen by the backend.
-
-\item[\code{\defn{SANE\_FRAME\_BLUE}}:] The frame contains one channel
-  of data that represents sample values from the blue spectral band.
-  The complete image consists of three frames:
-  \code{SANE\_\-FRA\-ME\_RED}, \code{SANE\_FRAME\_GREEN}, and
-  \code{SANE\_FRAME\_BLUE}.  The order in which the frames are
-  transmitted chosen by the backend.
-
-\end{description}
-\end{quote}
-
-In frames of type \code{SANE\_FRAME\_GRAY}, when the bit depth is 1 there are
-only two sample values possible, 1 represents minimum intensity
-(black) and 0 represents maximum intensity (white).  For all other bit
-depth and frame type combinations, a sample value of 0 represents
-minimum intensity and larger values represent increasing intensity.
-
-The combination of bit depth 1 and \code{SANE\_FRAME\_RGB} (or
-\code{SANE\_FRAME\_RED}, \code{SANE\_FRAME\_GREEN}, \code{SANE\_FRAME\_BLUE})
-is rarely used and may not be supported by every frontend.
+The type of arbitrary data frames is \code{\defn{SANE\_FRAME\_MIME}}.
+The frame contains arbitrary data of the MIME (see RFC 1521/1522) type that is
+given in the \code{format\_desc} member of the \code{SANE\_Parameters}
+structured type (see See section~\ref{sec:sanegetparameters} on
+page~\pageref{sec:sanegetparameters}).  As such, it is assumed to be
+incomprehensible to the frontend, except for selected types the frontend is
+specifically capable of handling internally.  The frontend is free to ignore
+those frames, or employ any appropriate means to otherwise handle this data
+(like saving them to disk or spawning an external viewer).
+\end{changebar}
 
 \chapter{The SANE Application Programmer Interface (API)}\label{chap:api}
 
-This Section defines version 1 of the SANE application
+\begin{changebar}
+This Section defines version 2 of the SANE application
 programmer interface (API).  Any SANE frontend must depend on the
-interface defined in this section only.  Converseley, any SANE backend
+interface defined in this section only. Converseley, any SANE backend
 must implement its functionality in accordance with this
-specification.  The interface as documented here is declared as a C
-callable interface in a file called \filename{sane/sane.h}.  This file should
+specification. The interface as documented here is declared as a C
+callable interface in a file called \filename{sane/sane-2.h}. This file should
 normally be included via a C pre-processor directive of the form:
 \begin{verbatim}
-  #include <sane/sane.h>
+  #include <sane/sane-2.h>
 \end{verbatim}
+\end{changebar}
 
 
 \section{Version Control}
@@ -655,6 +658,7 @@ string.
 
 
 \subsection{Device Descriptor Type}
+\begin{changebar}
 
 Each SANE device is represented by a structure of type
 \code{\defn{SANE\_Device}}.  The C declaration of this type is given
@@ -667,10 +671,19 @@ typedef struct
     SANE_String_Const vendor;
     SANE_String_Const model;
     SANE_String_Const type;
+    SANE_String_Const email_backend_author;
+    SANE_String_Const backend_website;
+    SANE_String_Const device_location;
+    SANE_String_Const comment;
+    SANE_String_Const reserved_string;
+    SANE_Int backend_version_code;
+    SANE_Int backend_capablity_flags;
+    SANE_Int reserved_int;
   }
 SANE_Device;
 \end{verbatim}
 \end{quote}
+\end{changebar}
 \index{device-name}
 The structure provides the unique name of the scanner in member
 \code{name}.  It is this unique name that should be passed in a call
@@ -682,7 +695,7 @@ should not be excessive.  It is {\em recommended\/} that backends keep
 unique names below 32 characters in length.  However, applications
 {\em must\/} be able to cope with arbitrary length unique names.
 
-The remaining members in the device structure provide additional
+The next three members in the device structure provide additional
 information on the device corresponding to the unique name.
 Specifically, members \code{vendor}, \code{model}, and \code{type} are
 single-line strings that give information on the vendor
@@ -711,7 +724,7 @@ will be expanded as need arises):
       \code{Hewlett-Packard} & \code{Tamarack} \\
       \code{IBM}             & \code{UMAX} \\
       \code{Kodak}           & \code{Noname} \\
-      \code{Logitech}        & \\
+      \code{Logitech}        & \\ 
       \hline
     \end{tabular}
     \hspace{\fill}
@@ -740,6 +753,47 @@ that have no physical vendor associated.  Also, there are no
 predefined model name strings since those are vendor specific and
 therefore completely under control of the respective backends.
 
+\begin{changebar}
+The backend has to set up the string \code{email\_backend\_author}
+with the name and the email address of the backend author or a contact person
+in the format:
+\begin{verbatim}
+Firstname Lastname <name@domain.org>
+\end{verbatim}
+
+The string \code{backend\_website} has to be set up by the backend
+with the website or ftp address of the backend in the format:
+\begin{verbatim}
+http://www.domain.org/sane-hello/index.html
+\end{verbatim}
+
+The backend should fill the string \code{device\_location} with a
+text that describes where a user can find this device, the text 
+should be read from the backend config file. This could e.g. look
+like this:
+\begin{verbatim}
+building 93, 2nd plane, room 2124
+\end{verbatim}
+
+The string \code{comment} can be used to display any comment to the user,
+the text should be read from the backend config file.
+
+The string \code{reserved\_string} is planed for future use, the backend
+has to set this string to "".
+
+With member \code{backend\_version\_code} a frontend can find
+out the version of a backend it is connected to via one or more meta
+backends.
+
+The member \code{backend\_capability\_flags} contains 32 bits that
+are planned to give the backend the chance to inform the frontend about
+its capabilities. The meaning of the flags will be defined when there
+is the need for it. The backend has to set all not defined bits
+(in the moment all 32 bits) to 0.
+
+The member \code{reserved\_int} is planned for future use, the backend has
+to set the value of the integer to 0.
+\end{changebar}
 
 \subsection{Option Descriptor Type}\label{sec:odesc}
 
@@ -1066,6 +1120,84 @@ SANE_Range;
 \end{table}
 
 
+\subsection{Internationalization}\label{sec:i18n}
+\begin{changebar}
+All backend texts should be written in english.
+Localization (translation of backend texts) has to be done
+in the frontend. To automatically prepare translation tables
+(e.g. english to german) it is necessary to mark the texts
+that shall be translated.
+
+\subsubsection{How is a text marked for translation}
+
+The keyword \code{SANE\_I18N} is used to mark a text for translation.
+\code{SANE\_I18N} has to be defined as a dummy prototype:
+
+  \begin{quote}
+\begin{verbatim}
+#ifndef SANE_I18N
+#  define SANE_I18N(text) text
+#endif
+\end{verbatim}
+  \end{quote}
+
+You should not mark prototypes or variables with \code{SANE\_I18N}
+because it is not possible (or very hard) to find out the
+texts that are covered by prototypes (\verb|SANE_I18N(START_SCAN_TEXT)|) and
+variables (\verb|SANE_I18N(option[7].name)|).
+
+A correct marked text can look like this:\\
+\verb|snprintf(buf, sizeof(buf), SANE_I18N("Start scan")|\\
+or\\
+\verb|#define START_SCAN_TEXT SANE_I18N("Start scan")|.\\
+It also is allowed to mark texts in structs because the
+prototype \code{SANE\_I18N} has no effect to the compiler.
+
+\subsubsection{Which texts shall be marked for translation?}
+All option texts that are visible for the user should be marked for
+translation. This is:
+\begin{itemize}
+\item
+member \code{title}
+\item
+member \code{desc}
+\item
+member \code{string\_list}
+\end{itemize}
+of \code{SANE\_Option\_Descriptor}.
+
+It is not allowed to mark/translate member \code{name}.
+Please also do not mark any error or debug messages that are
+displayed by the backend.
+
+\subsubsection{File formats and translation functions}
+The recommended file formats for translation tables are the \code{po} files
+and \code{mo} or \code{gmo} files.
+The po file contains the original text marked with the keyword \code{msgid}
+and the translated text marked with the keyword \code{msgstr}.
+A \code{po} file that contains all needed \code{msgid}s can be created
+e.g. by the gnu gettext tool \verb|xgettext| with the option
+\verb|-k SANE_I18N|.
+The translator adds the translated texts to the \code{po} files.
+The gettext tool \code{msgfmt} converts the \code{po} files to the
+\code{mo} or \code{gmo} files.\\
+
+Translation is done in the frontend. A backend has nothing
+to do with the translation of texts.
+The frontend should use the function \code{gettext}
+to translate the texts. This e.g. can look like this:\\
+\verb|snprintf(buf, sizeof(buf), gettext("english text"));|
+
+If a frontend author decides to use translation functions that
+need different translation tables, then the frontend is
+responsible to create/convert the translation tables.
+In this case it should use the \code{po} files to create its
+own translation tables from it.\\
+
+Note that it is strongly recommended to use the gettext tools.
+\end{changebar}
+
+
 \section{Operations}
 
 \subsection{\code{sane\_init}}
@@ -1172,6 +1304,10 @@ insufficient amount of memory is available.
   \code{sane\_open()} call is performed.  A device name may be
   specified explicitly by a user which would make it unnecessary and
   undesirable to call this function first.
+\begin{changebar}
+  The same information about
+  a device has to be returned when \code{sane\_open} is called.
+\end{changebar}
 \end{quote}
 
 
@@ -1180,12 +1316,21 @@ insufficient amount of memory is available.
 This function is used to establish a connection to a particular
 device.  The name of the device to be opened is passed in argument
 \code{name}.  If the call completes successfully, a handle for the
-device is returned in \code{*h}.  As a special case, specifying a
-zero-length string as the device requests opening the first available
-device (if there is such a device).
+device is returned in \code{*h}.
+\begin{changebar}
+The description of the device
+is returned in \code{**device\_description}. This is the
+same description that is returned in the list by \code{sane\_get\_devices}.
+The returned data \code{*h} and \code{*device\_description} is guaranteed
+to remain unchanged and valid until a call to \code{sane\_close()}
+is performed.
+\end{changebar}
+As a special case, specifying a zero-length string as the device requests
+opening the first available device (if there is such a device).
 \begin{quote}\index{sane\_open}
 \begin{verbatim}
-SANE_Status sane_open (SANE_String_Const name, SANE_Handle * h);
+SANE_Status sane_open (SANE_String_Const name, SANE_Handle * h,
+const SANE_Device ** device_description);
 \end{verbatim}
 \end{quote}
 
@@ -1326,7 +1471,7 @@ combination of the values described in Table~\ref{tab:info}.
   choose to ``round'' a string to the closest matching legal string
   for a constrained string value. \\
 
-  \code{\defn{SANE\_INFO\_RELOAD\_OPTIONS}} & 2 & The setting of an
+\code{\defn{SANE\_INFO\_RELOAD\_OPTIONS}} & 2 & The setting of an
   option may affect the value or availability of one or more {\em
     other\/} options.  When this happens, the SANE backend sets this
   member in \code{*i} to indicate that the application should reload
@@ -1364,7 +1509,7 @@ This function may fail with one of the following status codes.
 
 
 
-\subsection{\code{sane\_get\_parameters}}
+\subsection{\code{sane\_get\_parameters}\label{sec:sanegetparameters}}
 
 This function is used to obtain the current scan parameters.  The
 returned parameters are guaranteed to be accurate between the time a
@@ -1388,21 +1533,30 @@ SANE_Status sane_get_parameters (SANE_Handle h,
 The scan parameters are returned in a structure of type
 \code{\defn{SANE\_Parameters}}.  The C declaration of this structure
 is given below.
+\begin{changebar}
 \begin{quote}
 \begin{verbatim}
 typedef struct
   {
     SANE_Frame format;
-    SANE_Bool last_frame;
+    SANE_Int flags;
     SANE_Int lines;
     SANE_Int depth;
     SANE_Int pixels_per_line;
     SANE_Int bytes_per_line;
+    SANE_Int channels_per_image;
+    SANE_String format_desc;
+    SANE_String proposed_filename;
+    SANE_Int dpi_x;
+    SANE_Int dpi_y;
+    char reserved[32]; /* 32 bytes for future use */
   }
 SANE_Parameters;
 \end{verbatim}
 \end{quote}
+\end{changebar}
 
+\begin{changebar}
 Member \code{format} specifies the format of the next frame to be
 returned.  The possible values for type \code{\defn{SANE\_Frame}} are
 described in Table~\ref{tab:frameformat}.  The meaning of these
@@ -1410,19 +1564,22 @@ values is described in more detail in Section~\ref{sec:imageformat}.
 \begin{table}[htbp]
   \begin{center}
     \leavevmode
-    \begin{tabular}{|l|r|l|}
+    \begin{tabular}{|l|c|c|l|}
 \hline
 \multicolumn{1}{|c|}{\bf Symbol} &
 \multicolumn{1}{|c|}{\bf Code} &
+\multicolumn{1}{|c|}{\bf SANE standard} &
 \multicolumn{1}{|c|}{\bf Description} \\
 
 \hline\hline
 
-\code{\defn{SANE\_FRAME\_GRAY}} & 0 & Band covering human visual range. \\
-\code{\defn{SANE\_FRAME\_RGB}} & 1 & Pixel-interleaved red/green/blue bands. \\
-\code{\defn{SANE\_FRAME\_RED}} & 2 & Red band of a red/green/blue image. \\
-\code{\defn{SANE\_FRAME\_GREEN}} & 3 & Green band of a red/green/blue image. \\
-\code{\defn{SANE\_FRAME\_BLUE}} & 4 & Blue band of a red/green/blue image. \\
+\code{\defn{SANE\_FRAME\_GRAY}}  & 0 & version 1 & Band covering human visual range. \\
+\code{\defn{SANE\_FRAME\_RGB}}   & 1 & version 1 & Pixel-interleaved red/green/blue bands. \\
+\code{\defn{SANE\_FRAME\_RED}}   & 2 & version 1 & Red band of a red/green/blue image. \\
+\code{\defn{SANE\_FRAME\_GREEN}} & 3 & version 1 & Green band of a red/green/blue image. \\
+\code{\defn{SANE\_FRAME\_BLUE}}  & 4 & version 1 & Blue band of a red/green/blue image. \\
+\code{\defn{SANE\_FRAME\_RAW}}   & 5 & version 2 & Arbitrary pixel property transmission. \\
+\code{\defn{SANE\_FRAME\_MIME}}  & 6 & version 2 & Data described by a mime descriptor. \\
 
 \hline
     \end{tabular}
@@ -1431,21 +1588,67 @@ values is described in more detail in Section~\ref{sec:imageformat}.
   \end{center}
 \end{table}
 
-Member \code{last\_frame} is set to \code{SANE\_TRUE} if and only if
-the frame that is currently being acquired (or the frame that will be
-acquired next if there is no current frame) is the last frame of a
-multi frame image (e.g., the current frame is the blue component of a
-red, green, blue image).
+The \code{flags} member is a 32 bit bitfield, for which up to now 4 
+informational bits are defined, all unused bits have to be set to 0: 
+
+\begin{itemize}
+
+\item
+\code{SANE\_PFLAG\_LAST\_FRAME} (bit 0, bitvalue 1) is set to 1 if and
+only if the frame that is currently being acquired (or the frame that
+will be acquired next if there is no current frame) is the last frame
+of a multi frame image (e.g., the current frame is the blue component
+of a red, green, blue image). Note, that it is possible to transmit
+multiple images in succession.
+
+\item
+\code{SANE\_PFLAG\_MORE\_IMAGES} (bit 1, bitvalue 2) is set to 1 to indicate 
+further pending images. It is permissible to set that value to 1 "in good 
+faith", as it has to be determined at a very early time, where it might 
+not be detectable, if there actually are more images to transfer. E.g. 
+you will usually not know if the document feeder contains further pages 
+when starting to scan the current one. Thus you are allowed to set that 
+bit but later fail at \code{sane\_start()}.
+
+\item
+\code{SANE\_PFLAG\_NEW\_PAGE} (bit 2, bitvalue 4) is set to 1 to indicate 
+that the current frame comes from a new physical page. This bit is of 
+informational character only to help frontends to group multi-image 
+scans. 
+
+\item
+\code{SANE\_PFLAG\_BACKSIDE} (bit 3, bitvalue 8) tells if the current image 
+was acquired from the front (0) or backside (1) of the currently processed 
+sheet. It is of informational character and allows to group and order 
+multi-image transfers regardless of scanner acquisition order (front 
+first/back first). 
+
+\end{itemize}
+
+Note, that \code{flags} is compatible to member \code{last\_frame} of 
+\code{SANE\_Parameters} of SANE standard version 1 (same size
+and only bit 0 (bitvalue 1) was used with same function).
+
+
 
 Member \code{lines} specifies how many scan lines the frame is
 comprised of.  If this value is -1, the number of lines is not known a
 priori and the frontend should call \code{sane\_read()} until it
 returns a status of \code{SANE\_STATUS\_EOF}.
+Note, that even when transferring formats that have this information 
+inband, it is recommended to set that member, if available. If 
+unavailable or not applicable, set to -1 as mentioned above. 
 
 Member \code{bytes\_per\_line} specifies the number of bytes that
 comprise one scan line.
+If \code{bytes\_per\_line} is set to 0, which can currently only be the case for 
+\code{SANE\_FRAME\_MIME}, the frontend shall not assume a constant line 
+length. Instead it should simply try to read until \code{SANE\_STATUS\_EOF}
+with an arbitrary block length.
 
 Member \code{depth} specifies the number of bits per sample.
+Note, that only 0 (for not applicable), 1, and n*8 are allowed 
+values. Data with other depths has to be scaled up accordingly. 
 
 Member \code{pixels\_per\_line} specifies the number of pixels that
 comprise one scan line.
@@ -1466,6 +1669,125 @@ related to $c$, the number of bytes per line (as given by member
 Note that the number of bytes per line can be larger than the minimum
 value imposed by the right side of this equation.  A frontend must be
 able to properly cope with such ``padded'' image formats.
+
+Member \code{channels\_per\_image} specifies the number of channels the
+image consists of. When the image is transmitted in more than one frame
+\code{channels\_per\_image} has to be the same for all frames for this image.
+
+Member \code{format\_desc} is used for the new frametypes 
+\code{SANE\_FRAME\_RAW} and \code{SANE\_FRAME\_MIME}. Its meaning differs 
+between the two types: 
+
+\begin{itemize}
+\item
+\code{SANE\_FRAME\_RAW}: 
+The \code{format\_desc} contains a description of the channel data and
+an optional depth information separated by a colon(:).
+
+A plane is descibed by one channel, e.g. "\code{gray}" or "\code{gray:12}".
+
+Channel interleaved data is described by a comma separated list of channel descriptions,
+for example "\code{red,green,blue}" or "\code{red:8,green:8,blue:8}",
+the channel data is sent in the given order.
+
+The depth information does {\bf not} define the size of the transmitted
+channel data, it is only an information for the frontend. The channel data has
+to be sent in the size defined by member \code{depth}.
+
+Well known channels are \code{red}, \code{green}, \code{blue} and \code{gray}.
+It also is allowed to use other channel descriptions, e.g. if you
+use an infrared camera or scanner it could be \code{infrared} or
+a wavelength description like \code{1100nm}, but be aware that a
+frontend may not be able to display such channels with useful colors.
+
+Note that an image can be sent in single planes, in one interleaved
+frame that contains all channels or in several frames that contain
+one or more (interleaved) channels. When an RGB image is sent it
+is prefered to send the image data in one interleaved frame
+that consist of red, green and blue data in this order.
+The number of channels is defined in member \code{channels\_per\_image}.
+
+\item
+\code{SANE\_FRAME\_MIME}: 
+The \code{format\_desc} contains the MIME type/subtype *(;parameter) 
+fields as described in RFC 1521, 4. The Content-Type header field, 
+without the prefixing "Content-Type:". 
+Note, that it is discouraged to transfer proprietary file formats over 
+SANE. If at all possible, please stick to the IANA assigned MIME types, 
+and make sure the data stream is compliant with the corresponding 
+specification. 
+When data is transmitted with the frame type \code{SANE\_FRAME\_MIME}
+all data has to be transmitted within one frame, multiple frames
+are not allowed (so the flag \code{last\_frame} has to be set
+when using this frame type).
+A fully compliant SANE backend is required to transmit in either 
+SANE native frametypes, or in a MIME type, for which a converting 
+meta backend exists and is freely available for all platforms. 
+
+Other formats may be transmitted, but the only thing the average 
+frontend can do with them, is save them. This is not considered a 
+good option, as it does not facilitate transmitting the data to a 
+client application that may be running the frontend. 
+However, if the data transferred by the backend is not an image in 
+nature, it wouldn't make sense to try converting it anyway, so it is 
+acceptable to use a simple \code{SANE\_FRAME\_MIME} transfer for that 
+case. But even then, try to stick to well known stuff with freely 
+existing standards and viewers as well. 
+\end{itemize}
+
+The member \code{proposed\_filename} can be used to suggest a reasonable 
+default filename or -extension in case the backend can make such a 
+suggestion, like e.g. an image database. 
+If no such suggestion is intended, set the field to "". 
+
+In the case of raw frames, \code{proposed\_filename} is expected to hold
+the basename for the image, with the extension determined by the save function
+of the frontend, as the frontend can fully understand the data and is thus
+able to encode it in any format it wishes.
+
+For MIME frames \code{proposed\_filename} can contain either: 
+
+\begin{itemize}
+\item
+A name with a leading dot, which is considered to be a proposed 
+filename extension. This could also be gotten from the mime database, 
+but for systems lacking it, this might be convenient. Or: 
+
+\item
+A complete filename, including extension. 
+\end{itemize}
+
+Note, that for frontends that are able to parse a given MIME type 
+internally, it is perfectly permissible to ignore the extension 
+part of the proposed filename and only make use of the basename, 
+when using internal save algorithms for different formats. 
+
+In any case, if the frontend makes use of this field, the frontend 
+must mangle this proposal or the final filename it produces with 
+its help to suit local filesystem restrictions. 
+
+Special care should be taken not to cause security flaws this way. 
+For Unix, that means killing out all path separators (/) [to avoid 
+to save away stuff in obscure places or create critical files like 
+/etc/hosts.allow] and avoiding to overwrite existing files. 
+(Creating of leading dot files - like .rhosts - is not an issue here, 
+because that's only a proposed filename extension as mentioned above.
+
+The string \code{proposed\_comment} can be used to transmit additional 
+image data, that can be stored in the comment areas several fileformats 
+offer. It can contain any textual information the backend wishes to 
+convey to the user, like date/time of exposure, enganged filters, 
+etc. 
+
+The members \code{dpi\_x, dpi\_y} encode the horizontal and vertical 
+resolution. Note, that multiple-image scans may have different
+resolutions of each image. It is not permissible to change resolution 
+between frames of the same image.
+
+The member \code{reserved} is an array of 32 bytes (char) to keep
+the size of the struct unchanged when future extensions are done.
+The backend has to set the reserved bytes to 0.
+\end{changebar}
 
 
 \subsection{\code{sane\_start}}
@@ -1507,7 +1829,7 @@ This function is used to read image data from the device represented
 by handle \code{h}.  Argument \code{buf} is a pointer to a memory area
 that is at least \code{maxlen} bytes long.  The number of bytes
 returned is stored in \code{*len}.  A backend must set this to zero
-when a status other than \code{SANE\_STA\-TUS\_GOOD} is returned.
+when a status other than \code{SANE\_STA\-TUS\_GOOD} is returned).
 When the call succeeds, the number of bytes returned can be anywhere in
 the range from 0 to \code{maxlen} bytes.
 \begin{quote}\index{sane\_read}
@@ -1516,6 +1838,10 @@ SANE_Status sane_read (SANE_Handle h, SANE_Byte * buf,
                        SANE_Int maxlen, SANE_Int * len);
 \end{verbatim}
 \end{quote}
+For efficiency reasons, medium to large 
+block sizes (in the range of a few kilobytes) should be used. 
+Returning short reads is allowed to allow for small buffers 
+in the backend. 
 If this function is called when no data is available, one of two
 things may happen, depending on the I/O mode that is in effect for
 handle \code{h}.
@@ -1537,7 +1863,8 @@ This function may fail with one of the following status codes.
 \item[\code{SANE\_STATUS\_CANCELLED}:] The operation was cancelled through
   a call to \code{sane\_cancel}.
 \item[\code{SANE\_STATUS\_EOF}:] No more data is available for the
-  current frame.
+  current frame. If \code{sane\_read} sends back any image data it
+is not allowed to return with \code{SANE\_STATUS\_EOF}.
 \item[\code{SANE\_STATUS\_JAMMED}:] The document feeder is jammed.
 \item[\code{SANE\_STATUS\_NO\_DOCS}:] The document feeder is out of
   documents.
@@ -1600,7 +1927,7 @@ This function may fail with one of the following status codes:
 \begin{description}
 \item[\code{SANE\_STATUS\_INVAL}:] No image acquisition is pending.
 \item[\code{SANE\_STATUS\_UNSUPPORTED}:] The backend does not support
-  the requested I/O mode.
+the requested I/O mode.
 \end{description}
 \end{quote}
 
@@ -1709,7 +2036,7 @@ a command-line oriented option list) that allows to control the
 available options.  It should be noted that the number of options is
 fixed for a given handle.  However, as options are set, other options
 may become active or inactive.  Thus, after setting an option, it
-maybe necessary to re-read some or all option descriptors.  While
+may be necessary to re-read some or all option descriptors.  While
 setting up the device, it is also admissible to call
 \code{sane\_get\_parameters()} to get an estimate of what the image
 parameters will look like once image acquisition begins.
@@ -1732,16 +2059,39 @@ is desired, the frontend may attempt to call
 this point.  Either of these functions may fail if the backend does
 not support the requested operation.
 
-Image data is collected by repeatedly calling \code{sane\_read()}.
-Eventually, this function will return an end-of-file status
+\begin{changebar}
+Image data is collected by repeatedly calling \code{sane\_read()}
+until this function will return an end-of-file status
 (\code{SANE\_STATUS\_EOF}).  This indicates the end of the current
-frame.  If the frontend expects additional frames (e.g., the
-individual channels in of a red/green/blue image or multiple images),
-it can call \code{sane\_start()} again.  Once all desired frames have
-been acquired, function \code{sane\_cancel()} must be called.  This
-operation can also be called at any other time to cancel a pending
-operation.  Note that \code{sane\_cancel()} must be called even if the
-last read operation returned \code{SANE\_STATUS\_EOF}.
+frame. If the frontend expects additional frames (e.g., the
+individual channels of a red/green/blue image or multiple images),
+it can call \code{sane\_start()} again.
+If the \code{SANE\_PFLAG\_LAST\_FRAME} bit is set in \code{flags}, the
+current image is complete. In this case, it should be tested, if
+\code{flags} has the \code{SANE\_PFLAG\_MORE\_IMAGES} bit set.
+If yes, further calls to \code{sane\_start()} can be made to acquire
+more images. Please note, that as this bit has to be set at the beginning
+of a the transmission of the last frame before the new image, it is possible,
+that no reliable decision can be made at this time. It is thus permissible
+for a backend to set this bit, and then later at the actual call to
+\code{sane\_start()} return an error like \code{SANE\_STATUS\_NO\_DOCS}. 
+Such a sequence is permitted to transmit multiple images from a single 
+page as well as multiple pages. This behaviour should be controlled by 
+backend options as required, to allow single-page scanning as well as 
+ADF-batch-scanning. The frontend should always continue reading all images 
+until a frame with \code{SANE\_PFLAG\_LAST\_FRAME} on
+and \code{SANE\_PFLAG\_MORE\_IMAGES} off is encountered, or an error other
+than \code{SANE\_STATUS\_EOF} occurs in a SANE function.
+Note that \code{SANE\_STATUS\_NO\_DOCS} also is an allowed way for the backend
+to indicate the end of a multiple image scan.
+
+A frontend may choose to skip frames (e.g. because it cannot parse them), 
+which is accomplished by simply calling \code{sane\_start} again, which will get 
+you to the next frame, without having to read and discard the current one.
+
+In order to prematurely stop scanning and to reset the backend state, 
+\code{sane\_cancel()} can be called at any time. This call is required 
+as well after normal termination of a multiple image scan as described above.
 
 When done using the device, the handle should be closed by a call to
 \code{sane\_close()}.  Finally, before exiting the application,
@@ -1749,17 +2099,93 @@ function \code{sane\_exit()} must be called.  It is important not to
 forget to call this function since otherwise some resources (e.g.,
 temporary files or locks) may remain unclaimed.
 
+The following C sample code implements a reference loop for acquiring 
+multiple images:
+
+\begin{verbatim}
+SANE_Parameters parms; 
+SANE_Status     status; 
+
+do
+{ 
+  do
+  { 
+    /* Now start acquiring the next frame. */ 
+    status=sane_start(handle); 
+
+    /* if that failed, we have a problem, and no more frames can be 
+     * read at this time. Due to SANE_PFLAG_MORE_IMAGES still 
+     * being clear, this will break out of _BOTH_ loops. 
+     */ 
+    if (status != SANE_STATUS_GOOD) break; 
+
+    /* Now let us see what the next frame brings. */ 
+    status=sane_get_parameters(handle,&parms); 
+
+    /* This actually should not fail, but maybe the doc feeder 
+     * jammed or something, so we break as well, if something 
+     * is wrong. 
+     */ 
+    if (status != SANE_STATUS_GOOD) break; 
+
+    /* Now we check the announced parameters, if we can make use 
+     * of the frame data. If not, we skip over to the next frame. 
+     */ 
+    if ( do_i_like_that(&parms) == NO ) continue; 
+
+    /* Set up for reading the data here. Mangle filenames, 
+     * allocate memory, rewind multiframe files, ask user 
+     * for confirmation, ... 
+     */ 
+    setup_for_transfer(...); 
+
+    /* Now we read in the frame data and process it. This should 
+     * return SANE_STATUS_GOOD, until the frame is complete, 
+     * what causes SANE_STATUS_EOF to be returned. 
+     */ 
+    while( SANE_STATUS_GOOD == ( status=sane_read(...) ) ) 
+          read_in_and_process_data_as_required(); 
+
+    /* If transfer was broken due to anything but EOF, break out. */ 
+    if (status != SANE_STATUS_EOF) { 
+        break; 
+    } 
+
+    /* Now loop until we have all frames of an image. */ 
+  } while(!(parms.flag & SANE_PFLAG_LAST_FRAME));
+
+/* O.K. - we now have a complete image. Fit it together, save it, 
+ * flush buffers, transmit it, increment filenames, etc. 
+ */ 
+
+/* Now check for more pending images. If we have more, redo from start. 
+ * Some backends might cheat here and send us for an extra round which 
+ * will fail at sane_start, as they were not able to determine if they 
+ * would have more data at the start of the last frame we read. 
+ */ 
+} while(parms.flags & SANE_PFLAG_MORE_IMAGES); 
+
+/* No more data. Fine. Reset the backend and go back to option-control 
+ * loop. 
+ */ 
+
+sane_cancel(handle); 
+\end{verbatim}
+
+\end{changebar}
+
 
 \section{Well-Known Options}\index{well-known options}
 
-While most backend options are completely self-describing, there are a
+While most backend options are completely self-describing, there are
 cases where a user interface might want to special-case the handling
 of certain options.  For example, the scan area is typically defined
 by four options that specify the top-left and bottom-right corners of
 the area.  With a graphical user interface, it would be tedious to
 force the user to type in these four numbers.  Instead, most such
 interfaces will want to present to the user a preview (low-resolution
-scan) of the scanner surface and let the user pick the scan area by
+scan of the full scanner surface or a high(er) resolution scan of a subpart
+of the scanner surface) and let the user pick the scan area by
 dragging a rectangle into the desired position.  For this reason, the
 SANE API specifies a small number of option names that have
 well-defined meanings.
@@ -1775,15 +2201,22 @@ option numbers starting at one until
 \code{sane\_get\_option\_descriptor()} returns \code{NULL}, or a
 frontend can directly read out the value of option number 0.
 
-\subsection{Scan Resolution Option}\index{scan resolution}\index{resolution option}
+\subsection{Scan Resolution Options}\index{scan resolution}\index{resolution option}
 
+\begin{changebar}
 Option \code{resolution} is used to select the resolution at which an
-image should be acquired.  The type of this option is either
-\code{SANE\_TYPE\_INT} or \code{SANE\_TYPE\_FIXED}.  The unit is
-\code{SANE\_UNIT\_DPI} (dots/inch).
+image should be acquired. When the backend wants to allow different
+values for x- and y-resolution it has to define the options
+\code{x\_resolution} and \code{y\_resolution}. Note that only
+the option \code{resolution} {\bf or} the options
+\code{x\_resolution} {\bf and} \code{y\_resolution} may be active.
+
+The type of this option is either \code{SANE\_TYPE\_INT} or
+\code{SANE\_TYPE\_FIXED}.  The unit is \code{SANE\_UNIT\_DPI} (dots/inch).
 
 This option is not mandatory, but if a backend does support it, it
 must implement it in a manner consistent with the above definition.
+\end{changebar}
 
 \subsection{Preview Mode Option}\index{preview mode}
 
@@ -1799,6 +2232,10 @@ care of appropriately setting the scan resolution for preview mode
 (through option \code{resolution}).  A backend is free to override the
 \code{resolution} value with its own choice for preview mode, but it
 is advised to leave this choice to the frontend wherever possible.
+\begin{changebar}
+When the \code{preview} option is set the backend should transfer
+the image in frame type \code{SANE\_FRAME\_RAW} if possible.
+\end{changebar}
 
 This option is not mandatory, but if a backend does support it, it
 must implement it in a manner consistent with the above definition.
@@ -1858,7 +2295,313 @@ regarding these options:
 \item A frontend must work properly with any or all of these options
   missing.
   
+\begin{changebar}
+\item A frontend may temporarily set the values in a way that
+\code{tl-x} is larger than \code{br-x} and \code{tl-y} is larger than
+\code{br-y}.
+\end{changebar}
+
 \end{itemize}
+
+\subsection{Depth option}\index{bit depth option}
+\begin{changebar}
+Option \code{depth} is used to select the image depth in bits/sample
+in multi bit mode - (this means for 24 bit RGB mode this value must be 8).
+The type of this option is \code{SANE\_TYPE\_INT}.
+The unit is \code{SANE\_UNIT\_BIT}. For 1 bit modes
+(Lineart or Halftone) this option has to be inactive.
+For selection of 1 bit modes (Lineart or Halftone) the
+backend should use the well-known option \code{mode}.\\
+ 
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+ 
+\subsection{Gamma table options}\index{gamma table options}
+\begin{changebar}
+The \code{gamma-table} option defines a \code{SANE\_CONSTRAINT\_RANGE}
+of the type \code{SANE\_TYPE\_INT} which represents the gamma correction
+table for gray.  In color mode the \code{gamma-table} may be used to set
+a common gamma correction for red, green and blue. The options
+\code{red-gamma-table}, \code{green-gamma-table} and \code{blue-gamma-table}
+are used in color mode to set a gamma correction for each color
+separately. In color mode the backend is free to use only the
+\code{gamma-table} option, only the \code{red-}, \code{green-} and
+\code{blue-gamma-table} or all four options. When all four options
+are used then the color tables should do a gamma correction with
+the same input and output bit depth and the gray gamma table should
+reduce (if necessary) the bit depth from the scanner internal
+bit depth to the output bit depth. This should e.g. look like this:
+\begin{verbatim}
+red_value   = gamma-table(red-gamma-table(value))
+green_value = gamma-table(green-gamma-table(value))
+blue_value  = gamma-table(blue-gamma-table(value))
+\end{verbatim}
+
+The backend should not use the gamma tables to emulate other functions or options
+like highlight, shadow, contrast, brightness, threshold, analog\_gamma.
+These functions are common for all backends and should be added to the frontend
+or a meta-backend.\\
+ 
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+ 
+\subsection{Scan Mode options}\index{mode options}
+\begin{changebar}
+The option \code{mode} defines a \code{SANE\_CONSTRAINT\_STRING\_LIST}
+of type \code{SANE\_TYPE\_STRING}.
+It is used to select the scanmode (e.g. Color or Gray).
+Well known modes are: \code{Color}, \code{Gray}, \code{Halftone}
+and \code{Lineart}. \code{Color} and \code{Gray} are multi bit
+modes (8 or 16 bits/sample), \code{Halftone} and \code{Lineart}
+are single bit modes.\\
+This way a frontend can select e.g the mode \code{Gray}
+for scanning a fax.\\
+ 
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+ 
+\subsection{Scan Source options}\index{source options}
+\begin{changebar}
+The option \code{source} is used to select the scan source
+(e.g. Automatic Document Feeder).
+It defines a \code{SANE\_CONSTRAINT\_STRING\_LIST}
+of type \code{SANE\_TYPE\_STRING}.
+Well known sources are: \code{Flatbed}, \code{Transparancy Adapter} and
+\code{Automatic Document Feeder}.\\
+ 
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+
+
+\subsection{Threshold}\index{threshold option}
+\begin{changebar}
+The option \code{threshold} is used to define the threshold
+for Lineart and maybe Halftone mode. In multi bit modes
+this option should be set inactive.
+The type of this option is \code{SANE\_TYPE\_FIXED}.
+The unit is \code{SANE\_UNIT\_PERCENT}. The value range
+should be 0.0\ldots100.0 if possible.
+It defines the minimum intensity to get a white point / full intensity
+(image data bit = 0). The backend has to
+scale the values in the following way:\\
+A value of 0.0 means all pixels get white /full intensity (all image data
+bits are 0).  A value of 50.0 means intensities brighter than medium gray
+get white / full intensity (bit 0).  A value of 100.0 means all pixels get
+black (all image data bits are 1). If the scanner is not able to
+cover the full range the backend has to define a reduced
+value range (e.g. 30\ldots70 percent).
+
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+
+
+\subsection{Analog gamma}\index{analog gamma option}
+\begin{changebar}
+The option \code{analog-gamma} is used to define the gamma value 
+for an analog gamma function of the scanner in multi bit modes.
+In 1 bit modes this option should be set inactive.
+The type of this option is \code{SANE\_TYPE\_FIXED}.
+The unit is \code{SANE\_UNIT\_NONE}. The value range
+can be defined by the backend as supported. The values
+have to be positive. A gamma value of 1.0 means that
+the gamma correction has no effect. A value larger than
+1.0 increases the brightness of the image.
+In color mode there also can be options \code{analog-gamma-red},
+\code{analog-gamma-green} and \code{analog-gamma-blue}.
+It is not allowed to emulate an analog gamma function by
+a digital gamma table. The backend has to disable (or not
+define) this option when the scanner does not support an
+analog (hardware) gamma function.
+
+When analog gamma, highlight and shadow functions are available
+at the same time then the backend author has to care about the order
+in which the functions are implemented in the scanner hardware.
+The SANE standard expects that changing the analog gamma value
+has no effect on the shadow and highlight function. When the
+analog gamma function is executed in the scanner hardware
+before the shadow and highlight functions then the backend
+should do a compensation. For this the shadow and highlight
+values have to be gamma corrected with the relevant analog gamma value.
+
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+
+
+\subsection{Shadow}\index{shadow options}
+\begin{changebar}
+The option \code{shadow} is used to define the shadow level / black point level.
+The type of this option is \code{SANE\_TYPE\_FIXED}.
+The unit is \code{SANE\_UNIT\_PERCENT}. The value range
+should be 0.0\ldots100.0 if possible.
+It is used to define the maximum intensity level that creates an image data value
+of 0 (black).  The backend has to scale the values in the following way:\\
+A value of 0.0 means that the sensitivity range is not reduced, only the
+minimum intensity produces an image data value of 0 (black).
+A value of 50.0 means that that a medium intensity and everything that is darker
+produces an image data value of 0 (black).
+A value of 100.0 means the sensitivity range is reduced to 0, all image
+data values are 0 (black).  If the scanner is not able to
+cover the full range the backend has to define a reduced
+value range (e.g. 30\ldots70 percent).
+In color mode there can be options \code{shadow-red}, \code{shadow-green}
+and \code{shadow-blue}, in this case the \code{shadow} function has to be disabled.
+It is not allowed to emulate a shadow function by
+a digital gamma table. The backend has to disable (or not
+define) this option when the scanner does not support an
+analog (hardware) shadow function.
+
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+
+
+\subsection{Highlight}\index{hightlight options}
+\begin{changebar}
+The option \code{highlight} is used to define the highlight level / white point level.
+The type of this option is \code{SANE\_TYPE\_FIXED}.
+The unit is \code{SANE\_UNIT\_PERCENT}. The value range
+should be 0.0\ldots100.0 if possible.
+It is used to define the minimum intensity level that creates the maximum possible
+image data value (white/full intensity).  The backend has to scale the values in the
+following way:\\
+A value of 0.0 means the sensitivity range is reduced to 0, all image
+data have maximum value (white / full intensity).
+A value of 50.0 means that a medium intensity and everything that is brighter
+produces the maximum possible image data value (white / full intensity).
+A value of 100.0 means that the sensitivity range is not reduced, only the
+maximum intensity produces an image data with maximum possible value (white / full intensity).
+If  the scanner is not able to cover the full range the backend has to define a reduced
+value range (e.g. 30\ldots70 percent).
+In color mode there can be options \code{highlight-red}, \code{highlight-green}
+and \code{highlight-blue}, in this case \code{highlight} has to be disabled.
+It is not allowed to emulate a highlight function by
+a digital gamma table. The backend has to disable (or not
+define) this option when the scanner does not support an
+analog (hardware) highlight function.
+
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+
+
+\subsection{Turn lamp on and off}\index{lamp-on option}\index{lamp-off option}
+\begin{changebar}
+The option \code{lamp-on} is used to turn the lamp of the scanner on.
+The type of this option is \code{SANE\_TYPE\_BUTTON}.
+The unit is \code{SANE\_UNIT\_NONE}. When the option is set
+then the lamp of the scanner is turned on.
+
+The option \code{lamp-off} is used to turn the lamp of the scanner off.
+The type of this option is \code{SANE\_TYPE\_BUTTON}.
+The unit is \code{SANE\_UNIT\_NONE}. When the option is set
+then the lamp of the scanner is turned off.
+
+These options are not mandatory, but if a backend does support them, it
+must implement them in a manner consistent with the above definition.\\
+\end{changebar}
+
+
+\subsection{Scanner buttons}\index{scanner button options}
+\begin{changebar}
+Some scanners have buttons which state can be read by the scanner driver. 
+It is necessary to implement a locking function for the buttons
+because it is possible that several frontends try to connect to the
+same backend/scanner at the same time. Imagine what could happen
+when no locking would be implemented:
+Five people have started a scanning application which is connected
+via network to the scanner you want to use. You start a frontend,
+put a paper to the scanner and press the scan-button on the scanner.
+The scanner does scan three times (because three frontends asked the
+button status when you pressed the button). For three people the
+image is saved to the harddisk, but it is not sure that your
+frontend did scan the image.\\
+
+A backend that does make available the scanner-buttons has to
+implement the following options:\\
+\code{scanner-buttons-lock} is of type \code{SANE\_TYPE\_BOOL}, default = \code{SANE\_FALSE}\\
+\code{scanner-buttons-status} is of type \code{SANE\_TYPE\_INT}, default = 0\\
+\code{scanner-buttons-status-update} is of type \code{SANE\_TYPE\_BUTTON}\\
+When setting these options the backend does not set \code{SANE\_INFO\_RELOAD\_OPTIONS}
+or \code{SANE\_INFO\_RELOAD\_PARAMS} if not explictly defined.
+
+A frontend has to disable the usage of the scanner-buttons by default. This is important
+because other frontends will not be able to use the buttons when the button-functions are locked.
+Another important thing is that some scanners do not turn off their lamp when the driver
+does frequently talk to the scanner (what is done when reading the button status from the scanner).
+
+\begin{itemize}
+
+\item
+A frontend that wants to read the button status has to lock the
+button functions at first. For this it does set the option
+\code{scanner-buttons-lock} to \code{SANE\_TRUE}.
+While setting the value of option \code{scanner-buttons-lock} to \code{SANE\_TRUE}
+the backend does check if a lockfile (e.g. "backend"-buttons.lock) does exist.
+The lockfile has to be placed in a directory where every user has read and write access to.
+
+  \begin{itemize}
+  \item
+  If the lockfile does not exist then the backend creates the lockfile and writes the
+  process ID (PID) of the backend to the file. Button access is allowed: the value
+  of option \code{scanner-buttons-lock} is set to \code{SANE\_TRUE}
+  \item
+  If the file does exist and the backend PID is not the file PID then the
+  backend has to check if the process with the PID stored in the lockfile
+  still is running. If yes then the button access is not allowed: the value of
+  option \code{scanner-buttons-lock} is set to \code{SANE\_FALSE}. If not then the lockfile
+  is recreated and the PID of the backend is stored in the lockfile, button
+  access is allowed: the value of option \code{scanner-buttons-lock} is set to \code{SANE\_TRUE}
+  \end{itemize}
+
+\item
+The frontend does read the value of option \code{scanner-buttons-lock}. If
+it is \code{SANE\_TRUE} then the frontend has access to the scanner buttons.
+If it is \code{SANE\_FALSE} then access has been denied.
+
+\item
+If the button access is allowed the frontend has to do the following about
+once per second (while not scanning):
+  \begin{itemize}
+  \item
+  The frontend does set option \code{scanner-buttons-status-update}.
+  The backend checks if access to the buttons is allowed by comparing
+  the backend PID with the lockfile PID. If access is allowed it
+  does read the button status from the scanner and stores it in
+  the option \code{scanner-buttons-status}, each bit represents a button, a
+  value of 0 means the button is not pressed, a value of 1 means that the button
+  is pressed. When the scanner is busy the backend must not wait, it has to
+  return immedeatly and the button state keeps unchanged.
+  The backend has to implement a timeout function. When no button has been pressed
+  within a predefined time (e.g. 15 minutes) then the access permission is lost.
+  In this case the backend does set option \code{scanner-buttons-lock} to \code{SANE\_FALSE}
+  and does set \code{SANE\_INFO\_RELOAD\_OPTIONS} to inform the frontend that it has
+  lost permission to access the scanner-button functions.
+  If access is not allowed it does set the \code{scanner-buttons-status} to 0.
+
+  \item
+  The frontend does read the value of option \code{scanner-buttons-status}
+  \end{itemize}
+
+\item
+When the frontend does exit or it does not want to use the buttons
+it does set option \code{scanner-buttons-lock} to \code{SANE\_FALSE}.
+The backend does check if the backend PID and the lockfile PID are
+the same. If this is true then it removes the lockfile and sets the value 
+of \code{scanner-buttons-lock} to \code{SANE\_FALSE}.
+
+\code{sane\_close()} should do the same as setting option
+\code{scanner-buttons-lock} to \code{SANE\_FALSE}.
+
+\end{itemize}
+\end{changebar}
+
+
 
 \input{net.tex}
 
@@ -1869,7 +2612,7 @@ Anybody with email access to the Internet can automatically join and
 leave the discussion group by sending mail to the following address.
 \begin{quote}\index{mailing list}
 \begin{verbatim}
-sane-devel-request@mostang.com
+majordomo@mostang.com
 \end{verbatim}
 \end{quote}
 To subscribe, send a mail with the body ``\verb|subscribe sane-devel|'' to the
