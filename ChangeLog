@@ -4,5 +4,7 @@
 	* Changelog: Removed 1.* stuff.
 	* README README.old: Make clear that this is for SANE2.
 	* doc/sane.tex: Imported SANE2 draft version 0.07.
+	* sane2-api-todo: Added list of suggested features for the SANE2
+	  standard.
 	
 Older entries can be found in the ChangeLog files of SANE1.

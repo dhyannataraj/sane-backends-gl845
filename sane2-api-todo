@@ -1,0 +1,168 @@
+Suggestions for changes for sane-api-2 (2002-12-06)
+
+(x = already included into sane2.tex)
+
+ - SANE_FRAME_*:
+
+x  - SANE_FRAME_RAW, formatdesc="red:8,green:8,blue:8", replaces old SANE_FRAME_* types
+
+x  - SANE_FRAME_MIME, formatdesc=MIME-desciptor, only one frame/image, arbitary data 
+     this allows transmission of e.g. jpeg, tiff and any other data format
+
+x  - SANE_FRAME_GRAY/RGB/RED/GREEN/BLUE only allowed for sane-1 backends. 
+
+
+ - parameter.flags
+
+x  - compatible to sane-1
+
+x  - adds more_images, new_page, front/backside info, 28 more flags available
+
+x  - dpi_x, dpi_y, proposed_filename, formatdesc, channels_per_image
+
+x  - 32 bytes for future extension (set to 0)
+
+
+ - define the following well known options:
+
+x  - BIT_DEPTH = Word_List with bits/sample
+
+x  - GAMMA_VECTOR, and GAMMA_VECTOR_[RGB]
+
+x  - RESOLUTION or (X_RESOLUTION and Y_RESOLUTION)
+
+x  - scanmode COLOR, GRAY, LINEART (for frontend defaults, e.g. for fax => Gray)
+
+x  - scansource FLATBED/DOCUMENTFEEDER/TRANSPARENCY
+
+x  - ANALOG_GAMMA
+
+x  - HIGHLIGHT
+
+x  - SHADOW
+
+x  - THRESHOLD
+
+x  - LAMP_CONTROL
+
+x  - Scanner button options and protocol
+
+   - set focus position FOCUS_POS_X, FOCUS_POS_Y
+
+   - SANE_CAP_ADVANCED for a group
+
+   - SANE_CAP_ALWAYS_SETTABLE ??? (xcam/quickcam?)
+
+x- add to SANE_Device
+   - email_backend_author (string)
+   - device_location (string)
+   - comment (string)
+   - reserved_string (string)
+   - version_code (integer)
+   - backend_capability_flags (integer)
+   - reserved_int (integer)
+
+x- define recommended file formats for internationalization
+   in sane_i18n definition files:
+   *.po, default translation tables: *.(g)mo
+
+x- sane_open does return sane_device:
+   A frontend may decide not to call sane_get_devices
+   because it already knows which device shall be
+   opened. In this case it does not get any information
+   about the device (vendor, model, ...). So it makes
+   sense to return the SANE_Device in sane_open
+
+!- saned or a stand alone "turn lamp off deamon" should get
+   an internal timer to turn off the lamp of some scanners.
+   This has to be defined closer.
+   May be it is necessary to find out how long a scanner
+   has not been used. For this saned needs a function
+   like sane_get_offline_time()...
+
+!- define a way how multiple scanareas can be handled
+   before the scanning is started:
+   Create well-known options to set the next tl-y 
+
+x- define return value of sane_init - also necessary for SANE1
+
+x- define bit order of 1 bit modes  - also necessary for SANE1
+
+!- implementation note for select_fd  - also necessary for SANE1
+
+!- all texts and translations: UTF-8 format
+   (this is used in KDE and gtk+-2.x)
+   may be UTF-8 should be forced as SANE_Char format.
+
+!- download backend translation and documentation:
+   The Download function does not care about the file
+   format, this propably also has to be defined in the sane standard.
+   - sane_download_backend_file(filename). The backend
+     has to load the file from a fixed directory. The path
+     to the directory has to contain the backend name,
+     e.g: /usr/local/share/sane/sane-umax/
+     The frontend can not change the directory due to security!!!
+
+!- let backend display a frontend-info or -selection (ok/cancel)
+   dialog-box (e.g. "Calibration in progress: wait 10/9/8/... seconds")
+   this has to be done with a callback, eg.:
+     sane_frontend_dialog_display(**window, text, ok_text, cancel_text, backend_dialog_callback_function)
+     sane_frontend_dialog_close(window)
+   the frontend function has to be implemented in a way that the backend
+   can change the text. 
+   A good place to define the callback functions could be sane_init,
+   where already the authorization_callback is defined.
+
+!- give backend the chance to tell the frontend while/after scan
+   that the options have changed (e.g. film scanner reduces
+   number of available images): 
+   may be a flag (comparable to int *i in sane_control_option)
+
+-- add sane_get_device_info function that allows the frontend
+   to ask for information about all involved backends and meta backends
+   that are used.
+   is this still needed with version_code in sane_device?
+
+-- sane_extended_call() and sane_extended_callback() ?
+   I don`t like this because it makes it too simple
+   to add proprietary functions that are not defined
+   in the sane standard
+
+!- define what parts in a option_descriptor may be changed after
+   it has been set up and passed to the frontend
+
+?- add #define SANE_OPTION_IS_GETTABLE(cap)   (((cap) & (SANE_CAP_SOFT_DETECT | SANE_CAP_INACTIVE)) == SANE_CAP_SOFT_DETECT)
+
+x- define endianess for SANE_FRAME_RAW
+
+ - add a pointer "next" to the device handle to make linked lists instead of arrays(?)
+
+ - when an option is set with sane_control_option that changes the image significantly
+   (e.g. exposure) invalidate the preview by setting SANE_INFO_INVALIDATE_PREVIEW
+
+ - fix sane_strstatus (remove const)
+
+ - add SANE_String sane_verbose_error(Sane_Handle h), to show backend-specific
+   error messages. The error string always refers to the last error reported by the backend.
+   So the frontend would call this when a SANE API call returned with an error status.
+   E.g. out-of-memory in scanner hardware or "Couldn't open file foo".
+   
+ - The network protocoll must be updated to reflect the chnges to the SANE standard
+   - there were ideas to use UDP instead of TCP
+   - let the server define a port number for the data port to avoid firewall 
+     problems?
+   - maybe it's possible to avoid the data port at all?
+
+ - Update contact section
+
+ - Check grammar & spelling
+
+ - check too long lines
+
+ - check defective references
+
+ - update index
+
+ - Check that all headlines are in capital letters
+
+ - Changebar for sane_read
