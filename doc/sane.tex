@@ -2209,15 +2209,16 @@ frontend can directly read out the value of option number 0.
 Option \code{resolution} is used to select the resolution at which an
 image should be acquired. When the backend wants to allow different
 values for x- and y-resolution it has to define the options
-\code{x\_resolution} and \code{y\_resolution}. Note that only
+\code{x-resolution} and \code{y-resolution}. Note that only
 the option \code{resolution} {\bf or} the options
-\code{x\_resolution} {\bf and} \code{y\_resolution} may be active.
+\code{x-resolution} {\bf and} \code{y-resolution} may be active at the
+same time.
 
 The type of this option is either \code{SANE\_TYPE\_INT} or
 \code{SANE\_TYPE\_FIXED}.  The unit is \code{SANE\_UNIT\_DPI} (dots/inch).
 
-This option is not mandatory, but if a backend does support it, it
-must implement it in a manner consistent with the above definition.
+These options are not mandatory, but if a backend does support them, it
+must implement them in a manner consistent with the above definition.
 \end{changebar}
 
 \subsection{Preview Mode Option}\index{preview mode}
@@ -2305,10 +2306,15 @@ regarding these options:
 
 \end{itemize}
 
-\subsection{Depth option}\index{bit depth option}
 \begin{changebar}
+These options are not mandatory, but if a backend does support them, it
+must implement them in a manner consistent with the above definition.
+\end{changebar}
+
+\begin{changebar}
+\subsection{Depth Option}\index{bit depth option}
 Option \code{depth} is used to select the image depth in bits/sample
-in multi bit mode - (this means for 24 bit RGB mode this value must be 8).
+in multi bit mode (e.g. for 24 bit RGB mode this value must be 8).
 The type of this option is \code{SANE\_TYPE\_INT}.
 The unit is \code{SANE\_UNIT\_BIT}. For 1 bit modes
 (Lineart or Halftone) this option has to be inactive.
@@ -2319,8 +2325,58 @@ This option is not mandatory, but if a backend does support it, it
 must implement it in a manner consistent with the above definition.\\
 \end{changebar}
  
-\subsection{Gamma table options}\index{gamma table options}
 \begin{changebar}
+\subsection{Scan Mode Options}\index{mode options}
+The option \code{mode} defines a \code{SANE\_CONSTRAINT\_STRING\_LIST}
+of type \code{SANE\_TYPE\_STRING}.
+It is used to select the scanmode (e.g. Color or Gray).
+Well known modes are: \code{Color}, \code{Gray}, \code{Halftone}
+and \code{Lineart}. \code{Color} and \code{Gray} are multi bit
+modes (8 or 16 bits/sample), \code{Halftone} and \code{Lineart}
+are single bit modes.\\
+This way a frontend can select e.g the mode \code{Gray}
+for scanning a fax.\\
+ 
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+ 
+\begin{changebar}
+\subsection{Scan Source Options}\index{source options}
+The option \code{source} is used to select the scan source
+(e.g. Automatic Document Feeder).
+It defines a \code{SANE\_CONSTRAINT\_STRING\_LIST}
+of type \code{SANE\_TYPE\_STRING}.
+Well known sources are: \code{Flatbed}, \code{Transparancy Adapter} and
+\code{Automatic Document Feeder}.\\
+ 
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+
+\begin{changebar}
+\subsection{Threshold Option}\index{threshold option}
+The option \code{threshold} is used to define the threshold
+for Lineart and maybe Halftone mode. In multi bit modes
+this option should be set inactive.
+The type of this option is \code{SANE\_TYPE\_FIXED}.
+The unit is \code{SANE\_UNIT\_PERCENT}. The value range
+should be 0.0\ldots100.0 if possible.
+It defines the minimum intensity to get a white point / full intensity.
+The backend has to scale the values in the following way:\\
+
+A value of 0.0 means all pixels get white / full intensity.  A value of 50.0
+means intensities brighter than medium gray get white / full intensity.  A
+value of 100.0 means all pixels get black. If the
+scanner is not able to cover the full range the backend has to define a
+reduced value range (e.g. 30\ldots70 percent).
+
+This option is not mandatory, but if a backend does support it, it
+must implement it in a manner consistent with the above definition.\\
+\end{changebar}
+
+\begin{changebar}
+\subsection{Gamma Table Options}\index{gamma table options}
 The \code{gamma-table} option defines a \code{SANE\_CONSTRAINT\_RANGE}
 of the type \code{SANE\_TYPE\_INT} which represents the gamma correction
 table for gray.  In color mode the \code{gamma-table} may be used to set
@@ -2344,66 +2400,17 @@ The backend should not use the gamma tables to emulate other functions or option
 like highlight, shadow, contrast, brightness, threshold, analog\_gamma.
 These functions are common for all backends and should be added to the frontend
 or a meta-backend.\\
- 
-This option is not mandatory, but if a backend does support it, it
-must implement it in a manner consistent with the above definition.\\
-\end{changebar}
- 
-\subsection{Scan Mode options}\index{mode options}
-\begin{changebar}
-The option \code{mode} defines a \code{SANE\_CONSTRAINT\_STRING\_LIST}
-of type \code{SANE\_TYPE\_STRING}.
-It is used to select the scanmode (e.g. Color or Gray).
-Well known modes are: \code{Color}, \code{Gray}, \code{Halftone}
-and \code{Lineart}. \code{Color} and \code{Gray} are multi bit
-modes (8 or 16 bits/sample), \code{Halftone} and \code{Lineart}
-are single bit modes.\\
-This way a frontend can select e.g the mode \code{Gray}
-for scanning a fax.\\
- 
-This option is not mandatory, but if a backend does support it, it
-must implement it in a manner consistent with the above definition.\\
-\end{changebar}
- 
-\subsection{Scan Source options}\index{source options}
-\begin{changebar}
-The option \code{source} is used to select the scan source
-(e.g. Automatic Document Feeder).
-It defines a \code{SANE\_CONSTRAINT\_STRING\_LIST}
-of type \code{SANE\_TYPE\_STRING}.
-Well known sources are: \code{Flatbed}, \code{Transparancy Adapter} and
-\code{Automatic Document Feeder}.\\
+
+It is also discouraged to emulate gamma tables in the backend. The backend
+should disable (or not define) this option when the scanner does not support
+gamma tables in hardware.
  
 This option is not mandatory, but if a backend does support it, it
 must implement it in a manner consistent with the above definition.\\
 \end{changebar}
 
-
-\subsection{Threshold}\index{threshold option}
 \begin{changebar}
-The option \code{threshold} is used to define the threshold
-for Lineart and maybe Halftone mode. In multi bit modes
-this option should be set inactive.
-The type of this option is \code{SANE\_TYPE\_FIXED}.
-The unit is \code{SANE\_UNIT\_PERCENT}. The value range
-should be 0.0\ldots100.0 if possible.
-It defines the minimum intensity to get a white point / full intensity
-(image data bit = 0). The backend has to
-scale the values in the following way:\\
-A value of 0.0 means all pixels get white /full intensity (all image data
-bits are 0).  A value of 50.0 means intensities brighter than medium gray
-get white / full intensity (bit 0).  A value of 100.0 means all pixels get
-black (all image data bits are 1). If the scanner is not able to
-cover the full range the backend has to define a reduced
-value range (e.g. 30\ldots70 percent).
-
-This option is not mandatory, but if a backend does support it, it
-must implement it in a manner consistent with the above definition.\\
-\end{changebar}
-
-
-\subsection{Analog gamma}\index{analog gamma option}
-\begin{changebar}
+\subsection{Analog Gamma}\index{analog gamma option}
 The option \code{analog-gamma} is used to define the gamma value 
 for an analog gamma function of the scanner in multi bit modes.
 In 1 bit modes this option should be set inactive.
@@ -2435,8 +2442,8 @@ must implement it in a manner consistent with the above definition.\\
 \end{changebar}
 
 
-\subsection{Shadow}\index{shadow options}
 \begin{changebar}
+\subsection{Shadow Option}\index{shadow options}
 The option \code{shadow} is used to define the shadow level / black point level.
 The type of this option is \code{SANE\_TYPE\_FIXED}.
 The unit is \code{SANE\_UNIT\_PERCENT}. The value range
@@ -2463,8 +2470,8 @@ must implement it in a manner consistent with the above definition.\\
 \end{changebar}
 
 
-\subsection{Highlight}\index{hightlight options}
 \begin{changebar}
+\subsection{Highlight Option}\index{hightlight options}
 The option \code{highlight} is used to define the highlight level / white point level.
 The type of this option is \code{SANE\_TYPE\_FIXED}.
 The unit is \code{SANE\_UNIT\_PERCENT}. The value range
@@ -2492,8 +2499,8 @@ must implement it in a manner consistent with the above definition.\\
 \end{changebar}
 
 
-\subsection{Turn lamp on and off}\index{lamp-on option}\index{lamp-off option}
 \begin{changebar}
+\subsection{Lamp Options}\index{lamp-on option}\index{lamp-off option}
 The option \code{lamp-on} is used to turn the lamp of the scanner on.
 The type of this option is \code{SANE\_TYPE\_BUTTON}.
 The unit is \code{SANE\_UNIT\_NONE}. When the option is set
@@ -2509,8 +2516,8 @@ must implement them in a manner consistent with the above definition.\\
 \end{changebar}
 
 
-\subsection{Scanner buttons}\index{scanner button options}
 \begin{changebar}
+\subsection{Scanner Button Options}\index{scanner button options}
 Some scanners have buttons which state can be read by the scanner driver. 
 It is necessary to implement a locking function for the buttons
 because it is possible that several frontends try to connect to the
@@ -2578,7 +2585,7 @@ once per second (while not scanning):
   the option \code{scanner-buttons-status}, each bit represents a button, a
   value of 0 means the button is not pressed, a value of 1 means that the button
   is pressed. When the scanner is busy the backend must not wait, it has to
-  return immedeatly and the button state keeps unchanged.
+  return immediately and the button state keeps unchanged.
   The backend has to implement a timeout function. When no button has been pressed
   within a predefined time (e.g. 15 minutes) then the access permission is lost.
   In this case the backend does set option \code{scanner-buttons-lock} to \code{SANE\_FALSE}

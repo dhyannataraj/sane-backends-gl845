@@ -5,7 +5,9 @@
 	* README README.old: Make clear that this is for SANE2.
 	* doc/sane.tex: Imported SANE2 draft version 0.07. Fixed contact
 	  information. Removed duplicate const from sane_strstatus().
-	  Updates for Device Descriptor Type.
+	  Updates for Device Descriptor Type. Moved gamma table option
+	  to the other color enhancement options. Updated resolution,
+	  gamma table, geometry, threshold. Harmonized subsection headlines.
 	* sane2-api-todo: Added list of suggested features for the SANE2
 	  standard.
 	
