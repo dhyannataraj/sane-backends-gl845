@@ -1,4 +1,4 @@
-Suggestions for changes for sane-api-2 (2002-12-06)
+Suggestions for changes for sane-api-2 (2002-12-24)
 
 (x = already included into sane2.tex)
 
@@ -11,6 +11,12 @@ x  - SANE_FRAME_MIME, formatdesc=MIME-desciptor, only one frame/image, arbitary 
 
 x  - SANE_FRAME_GRAY/RGB/RED/GREEN/BLUE only allowed for sane-1 backends. 
 
+   - remove multi-frame paradigm at all?
+
+   - remove multi-channel 1 Bit mode?
+
+   - define 0 = black for all modes?
+
 
  - parameter.flags
 
@@ -20,8 +26,10 @@ x  - adds more_images, new_page, front/backside info, 28 more flags available
 
 x  - dpi_x, dpi_y, proposed_filename, formatdesc, channels_per_image
 
-x  - 32 bytes for future extension (set to 0)
-
+(x)- 32 bytes for future extension (set to 0)
+     Check how to do this without creating portability nightmares.
+     Keep in mind that the size of SANE_Int is unknown, same is true for
+     SANE_String and even char.
 
  - define the following well known options:
 
@@ -49,9 +57,21 @@ x  - Scanner button options and protocol
 
    - set focus position FOCUS_POS_X, FOCUS_POS_Y
 
-   - SANE_CAP_ADVANCED for a group
+   - multi pass for film scanners
+     - number of passes (either native or EMULATED)
+       SANE_TYPE_INT, word_list or range
+  
+   - direct selection of image number?
+       SANE_TYPE_INT
 
-   - SANE_CAP_ALWAYS_SETTABLE ??? (xcam/quickcam?)
+   - exposure time
+
+x  - SANE_CAP_ADVANCED for a group
+
+x  - SANE_CAP_ALWAYS_SETTABLE ??? (xcam/quickcam?)
+
+x  - SANE_CAP_HIDDEN: Don't display option at all
+
 
 x- add to SANE_Device
    - email_backend_author (string)
@@ -62,7 +82,7 @@ x- add to SANE_Device
    - backend_capability_flags (integer)
    - reserved_int (integer)
 
-x- define recommended file formats for internationalization
+(x)- define recommended file formats for internationalization
    in sane_i18n definition files:
    *.po, default translation tables: *.(g)mo
 
@@ -83,6 +103,8 @@ x- sane_open does return sane_device:
 !- define a way how multiple scanareas can be handled
    before the scanning is started:
    Create well-known options to set the next tl-y 
+
+ - define error codes for sane_get_parameters
 
 x- define return value of sane_init - also necessary for SANE1
 
@@ -117,6 +139,7 @@ x- define bit order of 1 bit modes  - also necessary for SANE1
    that the options have changed (e.g. film scanner reduces
    number of available images): 
    may be a flag (comparable to int *i in sane_control_option)
+   Maybe the frontend should reload the decriptors after a scan anyway?
 
 -- add sane_get_device_info function that allows the frontend
    to ask for information about all involved backends and meta backends
@@ -128,8 +151,10 @@ x- define bit order of 1 bit modes  - also necessary for SANE1
    to add proprietary functions that are not defined
    in the sane standard
 
-!- define what parts in a option_descriptor may be changed after
+(x)- define what parts in a option_descriptor may be changed after
    it has been set up and passed to the frontend
+   Maybe add size to list of members that can be changed?
+   Move definition to sane_get_select_fd?
 
 ?- add #define SANE_OPTION_IS_GETTABLE(cap)   (((cap) & (SANE_CAP_SOFT_DETECT | SANE_CAP_INACTIVE)) == SANE_CAP_SOFT_DETECT)
 
@@ -140,20 +165,30 @@ x- define endianess for SANE_FRAME_RAW
  - when an option is set with sane_control_option that changes the image significantly
    (e.g. exposure) invalidate the preview by setting SANE_INFO_INVALIDATE_PREVIEW
 
- - fix sane_strstatus (remove const)
+x- fix sane_strstatus (remove const)
 
  - add SANE_String sane_verbose_error(Sane_Handle h), to show backend-specific
    error messages. The error string always refers to the last error reported by the backend.
    So the frontend would call this when a SANE API call returned with an error status.
    E.g. out-of-memory in scanner hardware or "Couldn't open file foo".
-   
- - The network protocoll must be updated to reflect the chnges to the SANE standard
+   Check for therad-safety problems. If the handle parameters is used, no errors can
+   be printed before sane_open has succeeded.
+
+ - The network protocoll must be updated to reflect the changes to the SANE standard
    - there were ideas to use UDP instead of TCP
    - let the server define a port number for the data port to avoid firewall 
      problems?
    - maybe it's possible to avoid the data port at all?
+   - add the numbers of the RPCs
+   - check if the callbacks are implemented according to the standard
 
- - Update contact section
+ - How to name the SANE2 header? sane-2.h or sane2.h?
+
+ - Split sane_cancel and add sane_end()?
+
+x- Update contact section
+
+ - section with implementation notes (currently in backend-writing.txt).
 
  - Check grammar & spelling
 
@@ -165,4 +200,6 @@ x- define endianess for SANE_FRAME_RAW
 
  - Check that all headlines are in capital letters
 
- - Changebar for sane_read
+x- Changebar for sane_read
+
+x- check for correct quotation marks

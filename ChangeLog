@@ -1,4 +1,4 @@
-2002-12-09  Henning Meier-Geinitz <henning@meier-geinitz.de>
+2002-12-30  Henning Meier-Geinitz <henning@meier-geinitz.de>
 
 	* doc/sane.tex: Updated section about sane_get_parameters.
 	  Updated subsection "Option Descriptor Type": Clarified
@@ -16,7 +16,8 @@
 	  Used `` and '' as quotation marks. Spelling fixes. Overfull hbox
 	  fixes.
 	  New version: 0.08.
-
+	* sane2-api-todo: Added points from discussion on sane-devel and IRC.
+	
 2002-12-08  Henning Meier-Geinitz <henning@meier-geinitz.de>
 
 	* Changelog-*: Removed.
