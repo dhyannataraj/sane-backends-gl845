@@ -14,7 +14,7 @@
 
 \title{\huge SANE Standard Version 2.0 proposal 0.07 - rauch/beck}
 \author{}
-\date{Dec 5, 2002} 
+\date{Dec 8, 2002} 
 
 \makeindex
 
@@ -761,25 +761,27 @@ in the format:
 Firstname Lastname <name@domain.org>
 \end{verbatim}
 
-The string \code{backend\_website} has to be set up by the backend
+The string \code{backend\_website} should be set up by the backend
 with the website or ftp address of the backend in the format:
 \begin{verbatim}
 http://www.domain.org/sane-hello/index.html
 \end{verbatim}
 
 The backend should fill the string \code{device\_location} with a
-text that describes where a user can find this device, the text 
-should be read from the backend config file. This could e.g. look
+text that describes where a user can find this device. The text 
+should be configurable by the administrator. This could e.g. look
 like this:
 \begin{verbatim}
 building 93, 2nd plane, room 2124
 \end{verbatim}
 
-The string \code{comment} can be used to display any comment to the user,
-the text should be read from the backend config file.
+The string \code{comment} can be used to display any comment about the device
+to the user. The text should be configurable by the administrator.
 
-The string \code{reserved\_string} is planed for future use, the backend
-has to set this string to "".
+The string \code{reserved\_string} is unused currently but planned for
+future use.
+
+All unused strings must be set to "" by the backend.
 
 With member \code{backend\_version\_code} a frontend can find
 out the version of a backend it is connected to via one or more meta
@@ -1990,7 +1992,7 @@ The returned pointer is valid at least until the next call to this
 function is performed.
 \begin{quote}\index{sane\_strstatus}
 \begin{verbatim}
-const SANE_String_Const sane_strstatus (SANE_Status status);
+SANE_String_Const sane_strstatus (SANE_Status status);
 \end{verbatim}
 \end{quote}
 
@@ -2612,7 +2614,7 @@ Anybody with email access to the Internet can automatically join and
 leave the discussion group by sending mail to the following address.
 \begin{quote}\index{mailing list}
 \begin{verbatim}
-majordomo@mostang.com
+sane-devel-request@mostang.com
 \end{verbatim}
 \end{quote}
 To subscribe, send a mail with the body ``\verb|subscribe sane-devel|'' to the
