@@ -1,3 +1,11 @@
+2000-09-06  Peter Kirchgessner <peter@kirchgessner.net>
+
+        * backend/hp.h hp-scsi.h hp-scl.h hp-option.h hp-option.c
+                  hp-device.h hp-device.c hp-scl.c hp-handle.c hp.c
+          hp-backend  V 0.91, 04-Sep-2000, David Paschal (paschal@rcsis.com):
+          - Added support for flatbed HP OfficeJets
+          - (PK) fix problem with cancel preview 
+
 2000-09-04  Peter Kirchgessner <peter@kirchgessner.net>
 
         * backend/hp-scl.c hp-option.h hp.h hp-handle.c hp-option.c hp.c
