@@ -727,7 +727,7 @@ _set_size (HpOption opt, HpData data, SANE_Int size)
   _hp_option_saneoption(opt, data)->size = size;
 }
 
-#ifdef HP_EXPERIMENTAL
+/* #ifdef HP_EXPERIMENTAL */
 static SANE_Status
 _probe_int (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
 {
@@ -748,7 +748,7 @@ _probe_int (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
   _set_size(this, data, sizeof(SANE_Int));
   return _set_range(this, data, minval, 1, maxval);
 }
-#endif
+/* #endif */
 
 static SANE_Status
 _probe_int_brightness (_HpOption this, HpScsi scsi, HpOptSet optset,
@@ -812,6 +812,14 @@ _probe_resolution (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
   }
   sanei_hp_accessor_setint(this->data_acsr, data, val);
   _set_size(this, data, sizeof(SANE_Int));
+
+  /* The HP OfficeJet Pro 1150C crashes the scan head when scanning at
+   * resolutions less than 42 dpi.  Set a safe minimum resolution.
+   * Hopefully 50 dpi is safe enough. */
+  if ((sanei_hp_device_probe(&compat,scsi)==SANE_STATUS_GOOD) &&
+      ((compat&(HP_COMPAT_OJ_1150C|HP_COMPAT_OJ_1170C))==HP_COMPAT_OJ_1150C)) {
+	if (minval<50) minval=50;
+  }
 
   /* HP Photosmart scanner does not allow scanning at arbitrary resolutions */
   /* for slides/negatives. Must be multiple of 300 dpi. Set quantization. */
@@ -877,6 +885,36 @@ _probe_change_doc (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
   return SANE_STATUS_GOOD;
 }
 
+/* The OfficeJets support SCL_UNLOAD even when no ADF is installed, so
+ * this function was added to check for SCL_ADF_CAPABILITY, similar to
+ * _probe_change_doc(), to hide the unnecessary "Unload" button on
+ * non-ADF OfficeJets. */
+static SANE_Status
+_probe_unload (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
+
+{SANE_Status status;
+ int cap = 0;
+
+  DBG(2, "probe_unload: inquire ADF capability\n");
+
+  status = sanei_hp_scl_inquire(scsi, SCL_ADF_CAPABILITY, &cap, 0, 0);
+  if ( (status != SANE_STATUS_GOOD) || (cap == 0))
+    return SANE_STATUS_UNSUPPORTED;
+
+  DBG(2, "probe_unload: check if unload is supported\n");
+
+  status = sanei_hp_scl_inquire(scsi, SCL_UNLOAD, &cap, 0, 0);
+  if ( status != SANE_STATUS_GOOD )
+    return SANE_STATUS_UNSUPPORTED;
+
+  if (!(this->data_acsr = sanei_hp_accessor_bool_new(data)))
+      return SANE_STATUS_NO_MEM;
+  sanei_hp_accessor_setint(this->data_acsr, data, cap);
+  _set_size(this, data, sizeof(SANE_Bool));
+
+  return SANE_STATUS_GOOD;
+}
+
 static SANE_Status
 _probe_calibrate (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
 {
@@ -885,6 +923,13 @@ _probe_calibrate (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
   int media;
   int download_calib_file = 1;
   enum hp_device_compat_e compat;
+
+  /* The OfficeJets don't seem to support calibration, so we'll
+   * remove it from the option list to reduce frontend clutter. */
+  if ((sanei_hp_device_probe (&compat, scsi) == SANE_STATUS_GOOD) &&
+      (compat & HP_COMPAT_OJ_1150C)) {
+	return SANE_STATUS_UNSUPPORTED;
+  }
 
   /* If we have a Photosmart scanner, we only download the calibration file */
   /* when medium is set to prints */
@@ -1013,6 +1058,15 @@ _probe_choice (_HpOption this, HpScsi scsi, HpOptSet optset, HpData data)
       maxval /= 3; if ( maxval <= 0) maxval = 1;
       val /= 3; if (val <= 0) val = 1;
     }
+
+#if 0
+    /* The OfficeJets claim to support >8 bits per color, but it may not
+     * work on some models.  This code (if not commented out) disables it. */
+    if ((sanei_hp_device_probe (&compat, scsi) == SANE_STATUS_GOOD) &&
+        (compat & HP_COMPAT_OJ_1150C)) {
+          if (maxval>8) maxval=8;
+    }
+#endif
   }
 
   choices = _make_choice_list(this->descriptor->choices, minval, maxval);
@@ -1139,7 +1193,8 @@ _probe_scan_type (_HpOption this, HpScsi scsi, HpOptSet optset,
   /* Inquire XPA capability is supported only by IIcx and 6100c/4c/3c. */
   /* But more devices support XPA scan window. So dont inquire XPA cap. */
   if ( compat & (  HP_COMPAT_2CX | HP_COMPAT_4C | HP_COMPAT_4P
-                 | HP_COMPAT_5P | HP_COMPAT_5100C | HP_COMPAT_6200C) )
+                 | HP_COMPAT_5P | HP_COMPAT_5100C | HP_COMPAT_6200C) &&
+       !(compat&HP_COMPAT_OJ_1150C) )
   {
     scan_types[numchoices++] = this->descriptor->choices[2];
   }
@@ -2590,6 +2645,14 @@ static const struct hp_option_descriptor_s CONTRAST[1] = {{
     _probe_int_brightness, _program_generic_simulate, _enable_brightness,
     0, 0, 0, 0, 0, SCL_CONTRAST, -127, 127, 0, 0
 }};
+#ifdef SCL_SHARPENING
+static const struct hp_option_descriptor_s SHARPENING[1] = {{
+    SCANNER_OPTION(SHARPENING, INT, NONE),
+    NO_REQUIRES,
+    _probe_int, _program_generic, 0,
+    0, 0, 0, 0, 0, SCL_SHARPENING, -127, 127, 0, 0
+}};
+#endif
 static const struct hp_option_descriptor_s AUTO_THRESHOLD[1] = {{
     SCANNER_OPTION(AUTO_THRESHOLD, BOOL, NONE),
     NO_REQUIRES,
@@ -2897,7 +2960,7 @@ static const struct hp_option_descriptor_s CHANGE_DOC[1] = {{
 static const struct hp_option_descriptor_s UNLOAD[1] = {{
     SCANNER_OPTION(UNLOAD, BUTTON, NONE),
     NO_REQUIRES,
-    _probe_bool, _program_unload, 0,
+    _probe_unload, _program_unload, 0,
     0, 0, 1, 1, 0, SCL_UNLOAD, 0, 0, 0, 0
 }};
 
@@ -3041,7 +3104,11 @@ static HpOptionDescriptor hp_options[] = {
     SCAN_MODE, SCAN_RESOLUTION, DEVPIX_RESOLUTION,
 
     ENHANCEMENT_GROUP,
-    BRIGHTNESS, CONTRAST, AUTO_THRESHOLD,
+    BRIGHTNESS, CONTRAST,
+#ifdef SCL_SHARPENING
+    SHARPENING,
+#endif
+    AUTO_THRESHOLD,
 
     ADVANCED_GROUP,
     CUSTOM_GAMMA,

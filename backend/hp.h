@@ -102,7 +102,8 @@ typedef int 		hp_bool_t;
 typedef unsigned char	hp_byte_t;
 
 typedef enum { HP_CONNECT_SCSI, HP_CONNECT_DEVICE,
-               HP_CONNECT_PIO, HP_CONNECT_USB, HP_CONNECT_RESERVE } HpConnect;
+               HP_CONNECT_PIO, HP_CONNECT_USB, HP_CONNECT_RESERVE,
+	       HP_CONNECT_PTAL } HpConnect;
 
 typedef struct
 {

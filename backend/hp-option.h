@@ -51,6 +51,13 @@
  *
  * FIXME: this should become standard
  */
+
+#ifndef SANE_NAME_SHARPENING
+# define SANE_NAME_SHARPENING "sharpening"
+# define SANE_TITLE_SHARPENING "Sharpening"
+# define SANE_DESC_SHARPENING "Set sharpening value."
+#endif
+
 #ifndef SANE_NAME_AUTO_THRESHOLD
 # define SANE_NAME_AUTO_THRESHOLD "auto-threshold"
 # define SANE_TITLE_AUTO_THRESHOLD "Auto Threshold"

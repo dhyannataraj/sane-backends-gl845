@@ -130,6 +130,7 @@ hp_handle_startReader (HpHandle this, HpScsi scsi, HpProcessData *procdata)
   /* not closing fds[1] gives an infinite loop on Digital UNIX */
   status = sanei_hp_scsi_pipeout(scsi,fds[1],procdata);
   close (fds[1]);
+  DBG(3,"hp_handle_startReader: Exiting child (%s)\n",sane_strstatus(status));
   _exit(status);
 }
 
@@ -144,10 +145,10 @@ hp_handle_stopScan (HpHandle this)
   if (this->reader_pid)
     {
       int info;
-      DBG(3, "do_cancel: killing child (%d)\n", this->reader_pid);
+      DBG(3, "hp_handle_stopScan: killing child (%d)\n", this->reader_pid);
       kill(this->reader_pid, SIGTERM);
       waitpid(this->reader_pid, &info, 0);
-      DBG(1, "do_cancel: child %s = %d\n",
+      DBG(1, "hp_handle_stopScan: child %s = %d\n",
 	  WIFEXITED(info) ? "exited, status" : "signalled, signal",
 	  WIFEXITED(info) ? WEXITSTATUS(info) : WTERMSIG(info));
       close(this->pipefd);
@@ -161,8 +162,12 @@ hp_handle_stopScan (HpHandle this)
 	  sanei_hp_scl_errcheck(scsi);
 	  */
 	  sanei_hp_scl_reset(scsi);
-	  sanei_hp_scsi_destroy(scsi);
+	  sanei_hp_scsi_destroy(scsi,0);
 	}
+    }
+    else
+    {
+      DBG(3, "hp_handle_stopScan: no pid for child\n");
     }
   return SANE_STATUS_GOOD;
 }
@@ -197,6 +202,14 @@ hp_handle_uploadParameters (HpHandle this, HpScsi scsi, int *scan_depth,
       p->format = SANE_FRAME_GRAY;
       p->depth  = 1;
       *scan_depth = 1;
+
+      /* The OfficeJets don't seem to handle SCL_INVERSE_IMAGE, so we'll
+       * have to invert in software. */
+      if ((sanei_hp_device_probe (&compat, scsi) == SANE_STATUS_GOOD)
+          && (compat & HP_COMPAT_OJ_1150C)) {
+           *soft_invert=1;
+      }
+
       break;
   case HP_SCANMODE_GRAYSCALE: /* Grayscale */
       p->format = SANE_FRAME_GRAY;
@@ -269,7 +282,17 @@ sanei_hp_handle_new (HpDevice dev)
 void
 sanei_hp_handle_destroy (HpHandle this)
 {
+  HpScsi scsi=0;
+
+  DBG(3,"sanei_hp_handle_destroy: stop scan\n");
+
   hp_handle_stopScan(this);
+
+  if (sanei_hp_scsi_new(&scsi,this->dev->sanedev.name)==SANE_STATUS_GOOD &&
+      scsi) {
+	sanei_hp_scsi_destroy(scsi,1);
+  }
+
   sanei_hp_data_destroy(this->data);
   sanei_hp_free(this);
 }
@@ -277,6 +300,11 @@ sanei_hp_handle_destroy (HpHandle this)
 const SANE_Option_Descriptor *
 sanei_hp_handle_saneoption (HpHandle this, SANE_Int optnum)
 {
+  if (this->cancelled)
+  {
+    DBG(1, "sanei_hp_handle_saneoption: cancelled. Stop scan\n");
+    hp_handle_stopScan(this);
+  }
   return sanei_hp_optset_saneoption(this->dev->options, this->data, optnum);
 }
 
@@ -288,10 +316,11 @@ sanei_hp_handle_control(HpHandle this, SANE_Int optnum,
   HpScsi  scsi;
   hp_bool_t immediate;
 
-#if 0
-  if (hp_handle_isScanning(this))
-      return SANE_STATUS_DEVICE_BUSY;
-#endif
+  if (this->cancelled)
+  {
+    DBG(1, "sanei_hp_handle_control: cancelled. Stop scan\n");
+    RETURN_IF_FAIL( hp_handle_stopScan(this) );
+  }
 
   if (hp_handle_isScanning(this))
     return SANE_STATUS_DEVICE_BUSY;
@@ -303,7 +332,7 @@ sanei_hp_handle_control(HpHandle this, SANE_Int optnum,
   status = sanei_hp_optset_control(this->dev->options, this->data,
                                    optnum, action, valp, info, scsi,
                                    immediate);
-  sanei_hp_scsi_destroy ( scsi );
+  sanei_hp_scsi_destroy ( scsi,0 );
 
   return status;
 }
@@ -315,6 +344,12 @@ sanei_hp_handle_getParameters (HpHandle this, SANE_Parameters *params)
 
   if (!params)
       return SANE_STATUS_GOOD;
+
+  if (this->cancelled)
+  {
+    DBG(1, "sanei_hp_handle_getParameters: cancelled. Stop scan\n");
+    RETURN_IF_FAIL( hp_handle_stopScan(this) );
+  }
 
   if (hp_handle_isScanning(this))
     {
@@ -334,7 +369,7 @@ sanei_hp_handle_getParameters (HpHandle this, SANE_Parameters *params)
     if (!FAILED( sanei_hp_scsi_new(&scsi, this->dev->sanedev.name) )) {
       RETURN_IF_FAIL( sanei_hp_scl_inquire(scsi, SCL_NUMBER_OF_LINES,
            &p->lines,0,0));
-      sanei_hp_scsi_destroy(scsi);
+      sanei_hp_scsi_destroy(scsi,0);
       *params = this->scan_params;
     }
   }
@@ -354,7 +389,10 @@ sanei_hp_handle_startScan (HpHandle this)
   /* FIXME: setup preview mode stuff? */
 
   if (hp_handle_isScanning(this))
+  {
+      DBG(3,"sanei_hp_handle_startScan: Stop current scan\n");
       RETURN_IF_FAIL( hp_handle_stopScan(this) );
+  }
 
   RETURN_IF_FAIL( sanei_hp_scsi_new(&scsi, this->dev->sanedev.name) );
 
@@ -368,7 +406,7 @@ sanei_hp_handle_startScan (HpHandle this)
 
   if (FAILED(status))
     {
-      sanei_hp_scsi_destroy(scsi);
+      sanei_hp_scsi_destroy(scsi,0);
       return status;
     }
 
@@ -450,7 +488,7 @@ sanei_hp_handle_startScan (HpHandle this)
       status = hp_handle_startReader(this, scsi, &procdata);
   }
 
-  sanei_hp_scsi_destroy(scsi);
+  sanei_hp_scsi_destroy(scsi,0);
 
   return status;
 }
@@ -462,17 +500,18 @@ sanei_hp_handle_read (HpHandle this, void * buf, size_t *lengthp)
   ssize_t	nread;
   SANE_Status	status;
 
-  DBG(3, "read: trying to read %lu bytes\n", (unsigned long) *lengthp);
+  DBG(3, "sanei_hp_handle_read: trying to read %lu bytes\n",
+      (unsigned long) *lengthp);
 
   if (!hp_handle_isScanning(this))
     {
-      DBG(1, "read: not scanning\n");
+      DBG(1, "sanei_hp_handle_read: not scanning\n");
       return SANE_STATUS_INVAL;
     }
 
   if (this->cancelled)
     {
-      DBG(1, "read: cancelled\n");
+      DBG(1, "sanei_hp_handle_read: cancelled. Stop scan\n");
       RETURN_IF_FAIL( hp_handle_stopScan(this) );
       return SANE_STATUS_CANCELLED;
     }
@@ -488,7 +527,8 @@ sanei_hp_handle_read (HpHandle this, void * buf, size_t *lengthp)
       *lengthp = 0;
       if (errno == EAGAIN)
 	  return SANE_STATUS_GOOD;
-      DBG(1, "read: read from pipe: %s\n", strerror(errno));
+      DBG(1, "sanei_hp_handle_read: read from pipe: %s. Stop scan\n",
+          strerror(errno));
       hp_handle_stopScan(this);
       return SANE_STATUS_IO_ERROR;
     }
@@ -497,11 +537,11 @@ sanei_hp_handle_read (HpHandle this, void * buf, size_t *lengthp)
 
   if (nread > 0)
     {
-      DBG(3, "read: read %lu bytes\n", (unsigned long) nread);
+      DBG(3, "sanei_hp_handle_read: read %lu bytes\n", (unsigned long) nread);
       return SANE_STATUS_GOOD;
     }
 
-  DBG(1, "read: EOF from pipe\n");
+  DBG(1, "sanei_hp_handle_read: EOF from pipe. Stop scan\n");
   status = this->bytes_left ? SANE_STATUS_IO_ERROR : SANE_STATUS_EOF;
   RETURN_IF_FAIL( hp_handle_stopScan(this) );
 
@@ -517,7 +557,7 @@ sanei_hp_handle_read (HpHandle this, void * buf, size_t *lengthp)
            == SANE_STATUS_GOOD )
       {
         sanei_hp_scl_set(scsi, SCL_UNLOAD, 0);
-        sanei_hp_scsi_destroy(scsi);
+        sanei_hp_scsi_destroy(scsi,0);
       }
     }
   }
@@ -538,6 +578,7 @@ sanei_hp_handle_setNonblocking (HpHandle this, hp_bool_t non_blocking)
 
   if (this->cancelled)
     {
+      DBG(3,"sanei_hp_handle_setNonblocking: cancelled. Stop scan\n");
       RETURN_IF_FAIL( hp_handle_stopScan(this) );
       return SANE_STATUS_CANCELLED;
     }
@@ -556,6 +597,7 @@ sanei_hp_handle_getPipefd (HpHandle this, SANE_Int *fd)
 
   if (this->cancelled)
     {
+      DBG(3,"sanei_hp_handle_getPipefd: cancelled. Stop scan\n");
       RETURN_IF_FAIL( hp_handle_stopScan(this) );
       return SANE_STATUS_CANCELLED;
     }
