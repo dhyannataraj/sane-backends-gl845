@@ -17,6 +17,7 @@
 	  fixes.
 	  New version: 0.08.
 	* sane2-api-todo: Added points from discussion on sane-devel and IRC.
+	* doc/Makefile.in: Enable error output for latex and dvips.
 	
 2002-12-08  Henning Meier-Geinitz <henning@meier-geinitz.de>
 

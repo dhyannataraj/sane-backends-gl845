@@ -159,14 +159,14 @@ uninstall:
 sane.ind: sane.tex net.tex
 	@echo Generating index for sane.ps...
 	@touch sane.ind
-	@-$(LATEX) $(srcdir)/sane </dev/null >/dev/null && \
+	@$(LATEX) $(srcdir)/sane </dev/null && \
 	  makeindex sane.idx 2>/dev/null
 
 sane.ps: sane.ind
 	@echo Generating sane.ps...
-	@-$(LATEX) $(srcdir)/sane </dev/null >/dev/null && \
-	  $(LATEX) $(srcdir)/sane </dev/null >/dev/null && \
-	  dvips sane.dvi -o sane.ps 2>/dev/null
+	@$(LATEX) $(srcdir)/sane </dev/null  && \
+	  $(LATEX) $(srcdir)/sane </dev/null  && \
+	  dvips sane.dvi -o sane.ps 
 
 sane-html: sane.ind
 	$(DLH) $(srcdir)/sane.tex
