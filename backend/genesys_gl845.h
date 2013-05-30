@@ -499,7 +499,7 @@ enum
   reg_0xf8,
   reg_0xfe,
   reg_0xff,
-  GENESYS_GL846_MAX_REGS
+  GENESYS_GL845_MAX_REGS
 };
 
 #define SETREG(adr,val) {dev->reg[reg_##adr].address=adr;dev->reg[reg_##adr].value=val;}
@@ -512,7 +512,7 @@ enum
 #ifndef UNIT_TESTING
 static
 #endif
-SANE_Status gl846_init_scan_regs (Genesys_Device * dev,
+SANE_Status gl845_init_scan_regs (Genesys_Device * dev,
                       Genesys_Register_Set * reg,
                       float xres,	/*dpi */
 		      float yres,	/*dpi */
@@ -529,18 +529,18 @@ SANE_Status gl846_init_scan_regs (Genesys_Device * dev,
 #ifndef UNIT_TESTING
 static
 #endif
-SANE_Status gl846_begin_scan (Genesys_Device * dev, Genesys_Register_Set * reg, SANE_Bool start_motor);
+SANE_Status gl845_begin_scan (Genesys_Device * dev, Genesys_Register_Set * reg, SANE_Bool start_motor);
 
 /* Send the stop scan command */
 #ifndef UNIT_TESTING
 static
 #endif
-SANE_Status gl846_end_scan (Genesys_Device * dev, Genesys_Register_Set * reg, SANE_Bool check_stop);
+SANE_Status gl845_end_scan (Genesys_Device * dev, Genesys_Register_Set * reg, SANE_Bool check_stop);
 
 #ifndef UNIT_TESTING
 static
 #endif
-SANE_Status gl846_init (Genesys_Device * dev);
+SANE_Status gl845_init (Genesys_Device * dev);
 
 /** @brief moves the slider to steps at motor base dpi
  * @param dev device to work on
@@ -550,25 +550,25 @@ SANE_Status gl846_init (Genesys_Device * dev);
 static
 #endif
 SANE_Status
-gl846_feed (Genesys_Device * dev, unsigned int steps);
+gl845_feed (Genesys_Device * dev, unsigned int steps);
 
 #ifndef UNIT_TESTING
 static
 #endif
 SANE_Status
-gl846_stop_action (Genesys_Device * dev);
+gl845_stop_action (Genesys_Device * dev);
 
 #ifndef UNIT_TESTING
 static
 #endif
 SANE_Status
-gl846_slow_back_home (Genesys_Device * dev, SANE_Bool wait_until_home);
+gl845_slow_back_home (Genesys_Device * dev, SANE_Bool wait_until_home);
 
 #ifndef UNIT_TESTING
 static
 #endif 
 SANE_Status
-gl846_boot (Genesys_Device * dev, SANE_Bool cold);
+gl845_boot (Genesys_Device * dev, SANE_Bool cold);
 
 
 
@@ -670,7 +670,7 @@ static uint32_t img101_high[] = {22000, 22000, 22000, 18450, 15974, 14284, 13054
  */
 
 /* *INDENT-OFF* */
-static Motor_Profile gl846_motors[]={
+static Motor_Profile gl845_motors[]={
         /* Image Formula 101 */
 	{MOTOR_IMG101,  11000, HALF_STEP , img101_high},
         
